@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #F1EFE8;
+  --color-bg-soft: #E8E5DC;
+  --color-ink: #0E3A2F;
+  --color-ink-soft: #1A4D3F;
+  --color-gold: #F5B82E;
+  --color-gold-deep: #E8A911;
+  --color-danger: #EF4444;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Light / Soft Neu shadows */
+.neu {
+  background: var(--color-bg);
+  box-shadow:
+    6px 6px 16px rgba(0, 0, 0, 0.07),
+    -6px -6px 16px rgba(255, 255, 255, 0.8);
+}
+
+.neu-sm {
+  background: var(--color-bg);
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.06),
+    -3px -3px 8px rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.neu-inset {
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.06),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -6px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+  background-color: #0F172A;
+  color: #F8FAFC;
+}
+
+body.dark-mode .card {
+  background: #1E293B;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.5);
+  color: #F8FAFC;
+}
+
+body.dark-mode .neu {
+  background: #1E293B;
+  box-shadow:
+    5px 5px 15px rgba(0, 0, 0, 0.4),
+    -5px -5px 15px rgba(255, 255, 255, 0.03);
+}
+
+body.dark-mode .neu-sm {
+  background: #1E293B;
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.3),
+    -3px -3px 8px rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+}
+
+body.dark-mode .neu-inset {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 2px 2px 6px rgba(0, 0, 0, 0.5),
+    inset -2px -2px 6px rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+}
+
+body.dark-mode input,
+body.dark-mode select {
+  color: #F8FAFC;
+}
+
+body.dark-mode option {
+  background: #1E293B;
+  color: #F8FAFC;
+}
+
+/* Custom scrollbars */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.25);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes pop {
+  0% { transform: scale(0.94); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

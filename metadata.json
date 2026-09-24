@@ -1,0 +1,6 @@
+{
+  "name": "CajaMaster - POS Offline",
+  "description": "Punto de Venta (POS) y Gestión de Inventarios con cálculo IPV y licencia offline.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
