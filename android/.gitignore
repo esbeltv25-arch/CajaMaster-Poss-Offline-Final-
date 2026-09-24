@@ -90,7 +90,7 @@ lint/tmp/
 *.hprof
 
 # Cordova plugins for Capacitor
-capacitor-cordova-android-plugins
+# capacitor-cordova-android-plugins (included for standalone build)
 
 # Copied web assets (included so Android Studio compiles immediately after git clone)
 # app/src/main/assets/public
