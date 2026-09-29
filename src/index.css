@@ -1,0 +1,231 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg: #F1EFE8;
+  --color-bg-soft: #E8E5DC;
+  --color-ink: #0E3A2F;
+  --color-ink-soft: #1A4D3F;
+  --color-gold: #F5B82E;
+  --color-gold-deep: #E8A911;
+  --color-danger: #EF4444;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Light / Soft Neu shadows */
+.neu {
+  background: var(--color-bg);
+  box-shadow:
+    6px 6px 16px rgba(0, 0, 0, 0.07),
+    -6px -6px 16px rgba(255, 255, 255, 0.8);
+}
+
+.neu-sm {
+  background: var(--color-bg);
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.06),
+    -3px -3px 8px rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.neu-inset {
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.06),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -6px rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* =========================================================================
+   DARK MODE COMPREHENSIVE SYSTEM
+   ========================================================================= */
+
+html.dark,
+body.dark-mode {
+  background-color: var(--color-bg, #0F172A) !important;
+  color: var(--color-ink, #F8FAFC) !important;
+  color-scheme: dark;
+}
+
+/* Dark surfaces for cards & containers */
+html.dark .card,
+body.dark-mode .card {
+  background: var(--color-card-bg, #1E293B) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.6);
+  color: #F8FAFC !important;
+}
+
+/* Dark screen wrappers */
+html.dark .bg-white:not(.keep-light),
+body.dark-mode .bg-white:not(.keep-light) {
+  background-color: var(--color-bg, #0F172A) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-50:not(.keep-light),
+body.dark-mode .bg-slate-50:not(.keep-light) {
+  background-color: #162032 !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-100:not(.keep-light),
+body.dark-mode .bg-slate-100:not(.keep-light) {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-200:not(.keep-light),
+body.dark-mode .bg-slate-200:not(.keep-light) {
+  background-color: #2D3D54 !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Neu Elements */
+html.dark .neu,
+body.dark-mode .neu {
+  background: var(--color-card-bg, #1E293B) !important;
+  box-shadow:
+    5px 5px 15px rgba(0, 0, 0, 0.5),
+    -5px -5px 15px rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .neu-sm,
+body.dark-mode .neu-sm {
+  background: var(--color-card-bg, #1E293B) !important;
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.4),
+    -3px -3px 8px rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .neu-inset,
+body.dark-mode .neu-inset {
+  background: rgba(0, 0, 0, 0.45) !important;
+  box-shadow:
+    inset 2px 2px 6px rgba(0, 0, 0, 0.6),
+    inset -2px -2px 6px rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Inputs & Selects */
+html.dark input,
+html.dark select,
+html.dark textarea,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  color: #F8FAFC !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder,
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #64748B !important;
+}
+
+html.dark option,
+body.dark-mode option {
+  background: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Text overrides for maximum legibility */
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+body.dark-mode .text-slate-900,
+body.dark-mode .text-slate-800 {
+  color: #F8FAFC !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600,
+body.dark-mode .text-slate-700,
+body.dark-mode .text-slate-600 {
+  color: #CBD5E1 !important;
+}
+
+html.dark .text-slate-500,
+body.dark-mode .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+/* Dark Borders */
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-black\/5,
+html.dark .border-black\/10,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-slate-300,
+body.dark-mode .border-black\/5,
+body.dark-mode .border-black\/10 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Custom scrollbars */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.25);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes pop {
+  0% { transform: scale(0.94); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

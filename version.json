@@ -1,0 +1,9 @@
+{
+  "version": "1.3.0",
+  "versionCode": 1030,
+  "updateUrl": "https://esbeltv25-arch.github.io/CajaMaster-Updates/updates/bundle-v1.3.0.zip",
+  "mandatory": false,
+  "changelog": "Primer paquete de actualización OTA de CajaMaster POS con Modo Oscuro y Manual PDF Offline.",
+  "releaseDate": "2026-09-29",
+  "minNativeVersionCode": 1000
+}

@@ -1,0 +1,8 @@
+node_modules/
+build/
+# dist/ (included so git clone has dist/ ready for capacitor)
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
