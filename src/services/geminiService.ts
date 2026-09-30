@@ -83,7 +83,7 @@ async function callGemini(
     throw new Error("No hay una clave API de Google Gemini configurada en Ajustes.");
   }
 
-  const modelName = "gemini-2.5-flash";
+  const modelName = "gemini-3.8-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(userKey)}`;
 
   const bodyPayload: any = {
@@ -147,7 +147,7 @@ export async function testGeminiApiKey(keyToTest?: string): Promise<{ success: b
 
   try {
     // Test simple generation
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key.trim())}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(key.trim())}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

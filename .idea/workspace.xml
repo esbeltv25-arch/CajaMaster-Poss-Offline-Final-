@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a938c4a6-b001-48ea-931b-b1277785d9eb" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/android/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/capacitor.build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/capacitor.build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/assets/index-DCljjEuB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/assets/index.es-DCA-amzA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/assets/purify.es-CYR4BTuT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/assets/web-BCkN7Je9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/assets/web-CKMzu17j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/assets/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/src/main/assets/public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/capacitor-android/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/capacitor-android/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/capacitor-cordova-android-plugins/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/capacitor-cordova-android-plugins/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/assets/index-DCljjEuB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/assets/index.es-DCA-amzA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/assets/purify.es-CYR4BTuT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/assets/web-BCkN7Je9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/assets/web-CKMzu17j.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/dist/index.html" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "esbeltv25-arch"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/esbeltv25-arch/CajaMaster-Poss-Offline-Final-",
+    "accountId": "baf7217c-463d-4035-8c3a-7a1070b7940b"
+  }
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 8
+}]]></component>
+  <component name="ProjectId" id="3K0b0UgHIXOoR7awBwjBc2t8i4b" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "settings.editor.selected.configurable": "AndroidSdkUpdater"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a938c4a6-b001-48ea-931b-b1277785d9eb" name="Changes" comment="" />
+      <created>1790697210893</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1790697210893</updated>
+    </task>
+    <servers />
+  </component>
+</project>
