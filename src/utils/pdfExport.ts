@@ -8,6 +8,8 @@ import {
   runInventoryCatalogSentinel,
   preFlightSentinelGuard,
   sanitizeTextForPdf,
+  normalizeUnit,
+  toTitleCase,
 } from "./accountingSentinel";
 import { type FileExportPayload, saveToInternalOrDownload } from "./fileStorage";
 import { universalShare } from "./universalShare";
@@ -553,8 +555,8 @@ export function buildIPVReportPdfPayload(
 
   const pageWidth = 842;
   const pageHeight = 595;
-  const marginX = 28;
-  const printableWidth = pageWidth - marginX * 2; // 786 pt
+  const marginX = 25;
+  const printableWidth = pageWidth - marginX * 2; // 792 pt
   let y = 26;
 
   // Top Header Banner
@@ -615,20 +617,23 @@ export function buildIPVReportPdfPayload(
 
   y += 11;
 
-  // Table Columns Definition (Exact sum = 786 pt)
-  // 184 + 36 + 56 + 54 + 58 + 58 + 58 + 68 + 80 + 76 + 58 = 786 pt
+  // Table Columns Definition (Exact sum = 792 pt, matching printableWidth exactly)
+  // 138 + 22 + 42 + 42 + 44 + 40 + 44 + 42 + 54 + 54 + 70 + 72 + 68 + 40 = 792 pt
   const cols = [
-    { title: "PRODUCTO", width: 184, align: "left" },
-    { title: "U/M", width: 36, align: "center" },
-    { title: "INV. INIC.", width: 56, align: "right" },
-    { title: "ENTRADAS", width: 54, align: "right" },
-    { title: "DISP. VTA", width: 58, align: "right" },
-    { title: "INV. FINAL", width: 58, align: "right" },
-    { title: "VENDIDO", width: 58, align: "right" },
-    { title: "PRECIO (CUP)", width: 68, align: "right" },
-    { title: "IMPORTE (CUP)", width: 80, align: "right" },
-    { title: "COSTO TOTAL", width: 76, align: "right" },
-    { title: "MARGEN", width: 58, align: "right" },
+    { title: "PRODUCTO", width: 138, align: "left" },
+    { title: "U/M", width: 22, align: "center" },
+    { title: "INV. INIC.", width: 42, align: "right" },
+    { title: "ENTRADAS", width: 42, align: "right" },
+    { title: "DISP. VTA", width: 44, align: "right" },
+    { title: "MERMAS", width: 40, align: "right" },
+    { title: "INV. FINAL", width: 44, align: "right" },
+    { title: "VENDIDO", width: 42, align: "right" },
+    { title: "COSTO UNIT.", width: 54, align: "right" },
+    { title: "PRECIO VTA", width: 54, align: "right" },
+    { title: "IMPORTE (CUP)", width: 70, align: "right" },
+    { title: "COSTO DE VENTA", width: 72, align: "right" },
+    { title: "UTILIDAD (CUP)", width: 68, align: "right" },
+    { title: "MARGEN", width: 40, align: "right" },
   ];
 
   const renderTableHeader = () => {
@@ -636,17 +641,17 @@ export function buildIPVReportPdfPayload(
     doc.rect(marginX, y, printableWidth, 18, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.8);
+    doc.setFontSize(5.9);
 
     let curX = marginX;
     cols.forEach((col) => {
       const textX =
         col.align === "left"
-          ? curX + 5
+          ? curX + 4
           : col.align === "center"
           ? curX + col.width / 2
-          : curX + col.width - 5;
-      doc.text(col.title, textX, y + 12, { align: col.align as any });
+          : curX + col.width - 4;
+      doc.text(col.title, textX, y + 11.5, { align: col.align as any });
       curX += col.width;
     });
     y += 18;
@@ -655,7 +660,7 @@ export function buildIPVReportPdfPayload(
   renderTableHeader();
 
   // Table Body Rows
-  const rowHeight = 15;
+  const rowHeight = 14.5;
 
   auditedRows.forEach((r, idx) => {
     // Check page overflow
@@ -673,77 +678,105 @@ export function buildIPVReportPdfPayload(
 
     // Grid divider lines
     doc.setDrawColor(226, 232, 240); // slate-200
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.35);
     doc.line(marginX, y + rowHeight, marginX + printableWidth, y + rowHeight);
 
     let curX = marginX;
 
-    // 1. PRODUCTO (Sanitizado sin saltos de línea y acotado a ancho de celda)
+    // 1. PRODUCTO (Title Case, sanitizado sin saltos de línea y acotado al ancho de celda)
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.8);
+    doc.setFontSize(6.1);
     doc.setTextColor(15, 23, 42); // slate-900
-    const safeName = sanitizeTextForPdf(r.name, 35);
-    doc.text(safeName, curX + 5, y + 10.5, { maxWidth: cols[0].width - 10 });
+    const safeTitleName = sanitizeTextForPdf(toTitleCase(r.name), 30);
+    doc.text(safeTitleName, curX + 4, y + 10, { maxWidth: cols[0].width - 8 });
     curX += cols[0].width;
 
-    // 2. U/M
+    // 2. U/M (Estrictamente normalizado a "U" u otra unidad limpia)
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.0);
     doc.setTextColor(71, 85, 105);
-    doc.text(r.unit || "u", curX + cols[1].width / 2, y + 10.5, { align: "center" });
+    doc.text(normalizeUnit(r.unit), curX + cols[1].width / 2, y + 10, { align: "center" });
     curX += cols[1].width;
 
-    // 3. INV. INICIAL (Cantidad limpia sin 'u' pegada)
+    // 3. INV. INICIAL (Cantidad limpia sin 'u' pegada para evitar 'Ou')
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
-    doc.text(formatQuantity(r.invInicialCant), curX + cols[2].width - 5, y + 10.5, { align: "right" });
+    doc.text(formatQuantity(r.invInicialCant), curX + cols[2].width - 4, y + 10, { align: "right" });
     curX += cols[2].width;
 
     // 4. ENTRADAS
     if (r.entradasCant > 0) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(16, 185, 129); // emerald-600
-      doc.text(`+${formatQuantity(r.entradasCant)}`, curX + cols[3].width - 5, y + 10.5, { align: "right" });
+      doc.text(`+${formatQuantity(r.entradasCant)}`, curX + cols[3].width - 4, y + 10, { align: "right" });
       doc.setFont("helvetica", "normal");
       doc.setTextColor(15, 23, 42);
     } else {
       doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("-", curX + cols[3].width - 5, y + 10.5, { align: "right" });
+      doc.text("-", curX + cols[3].width - 4, y + 10, { align: "right" });
       doc.setTextColor(15, 23, 42);
     }
     curX += cols[3].width;
 
-    // 5. DISP. VTA
-    doc.text(formatQuantity(r.dispVentaCant), curX + cols[4].width - 5, y + 10.5, { align: "right" });
+    // 5. DISP. VTA (Inicial + Entradas)
+    doc.text(formatQuantity(r.dispVentaCant), curX + cols[4].width - 4, y + 10, { align: "right" });
     curX += cols[4].width;
 
-    // 6. INV. FINAL
-    doc.text(formatQuantity(r.invFinalCant), curX + cols[5].width - 5, y + 10.5, { align: "right" });
+    // 6. MERMAS (Bajas, roturas y ajustes autorizados)
+    if (r.mermasCant > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(225, 29, 72); // rose-600
+      doc.text(`-${formatQuantity(r.mermasCant)}`, curX + cols[5].width - 4, y + 10, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+    } else {
+      doc.setTextColor(148, 163, 184);
+      doc.text("-", curX + cols[5].width - 4, y + 10, { align: "right" });
+      doc.setTextColor(15, 23, 42);
+    }
     curX += cols[5].width;
 
-    // 7. VENDIDO
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text(formatQuantity(r.vendidoCant), curX + cols[6].width - 5, y + 10.5, { align: "right" });
-    doc.setFont("helvetica", "normal");
+    // 7. INV. FINAL (Disp - Mermas - Vendido)
+    doc.text(formatQuantity(r.invFinalCant), curX + cols[6].width - 4, y + 10, { align: "right" });
     curX += cols[6].width;
 
-    // 8. PRECIO (CUP) - Formateo contable homogéneo: comas en miles y 2 decimales
-    doc.text(formatAccounting(r.precioVenta), curX + cols[7].width - 5, y + 10.5, { align: "right" });
+    // 8. VENDIDO
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatQuantity(r.vendidoCant), curX + cols[7].width - 4, y + 10, { align: "right" });
+    doc.setFont("helvetica", "normal");
     curX += cols[7].width;
 
-    // 9. IMPORTE (CUP)
-    doc.setFont("helvetica", "bold");
-    doc.text(formatAccounting(r.importeVendido), curX + cols[8].width - 5, y + 10.5, { align: "right" });
-    doc.setFont("helvetica", "normal");
+    // 9. COSTO UNIT. (Costo unitario de adquisición para cruce fiscal)
+    doc.setTextColor(71, 85, 105);
+    doc.text(formatAccounting(r.costoUnitario), curX + cols[8].width - 4, y + 10, { align: "right" });
     curX += cols[8].width;
 
-    // 10. COSTO TOTAL
-    doc.text(formatAccounting(r.costoTotal), curX + cols[9].width - 5, y + 10.5, { align: "right" });
+    // 10. PRECIO VTA (Precio de venta unitario)
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatAccounting(r.precioVenta), curX + cols[9].width - 4, y + 10, { align: "right" });
     curX += cols[9].width;
 
-    // 11. MARGEN %
-    doc.text(`${r.margenPct.toFixed(1)}%`, curX + cols[10].width - 5, y + 10.5, { align: "right" });
+    // 11. IMPORTE (CUP)
+    doc.setFont("helvetica", "bold");
+    doc.text(formatAccounting(r.importeVendido), curX + cols[10].width - 4, y + 10, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    curX += cols[10].width;
+
+    // 12. COSTO DE VENTA (Mercancía que salió: Vendido * Costo Unitario)
+    doc.text(formatAccounting(r.costoTotal), curX + cols[11].width - 4, y + 10, { align: "right" });
+    curX += cols[11].width;
+
+    // 13. UTILIDAD (CUP) (Ganancia neta en dinero: Importe - Costo de Venta)
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(r.gananciaBruta >= 0 ? 16 : 225, r.gananciaBruta >= 0 ? 185 : 29, r.gananciaBruta >= 0 ? 129 : 72);
+    doc.text(formatAccounting(r.gananciaBruta), curX + cols[12].width - 4, y + 10, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    curX += cols[12].width;
+
+    // 14. MARGEN %
+    doc.text(`${r.margenPct.toFixed(1)}%`, curX + cols[13].width - 4, y + 10, { align: "right" });
 
     y += rowHeight;
   });
@@ -752,49 +785,62 @@ export function buildIPVReportPdfPayload(
   doc.setFillColor(245, 158, 11); // amber-500
   doc.rect(marginX, y, printableWidth, 17, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.4);
   doc.setTextColor(15, 23, 42);
 
   // Totals Label
-  doc.text("TOTALES GENERALES:", marginX + 6, y + 11.5);
+  doc.text("TOTALES GENERALES:", marginX + 4, y + 11.5);
 
   let colX = marginX + cols[0].width + cols[1].width;
 
-  // Col 2: Total Inv. Inicial (puro número sin 'u' pegada para evitar 'Ou')
-  doc.text(formatQuantity(auditedTotals.invInicialCant), colX + cols[2].width - 5, y + 11.5, { align: "right" });
+  // Col 2: Total Inv. Inicial
+  doc.text(formatQuantity(auditedTotals.invInicialCant), colX + cols[2].width - 4, y + 11.5, { align: "right" });
   colX += cols[2].width;
 
   // Col 3: Total Entradas
   const entradasStr = auditedTotals.entradasCant > 0 ? `+${formatQuantity(auditedTotals.entradasCant)}` : "-";
-  doc.text(entradasStr, colX + cols[3].width - 5, y + 11.5, { align: "right" });
+  doc.text(entradasStr, colX + cols[3].width - 4, y + 11.5, { align: "right" });
   colX += cols[3].width;
 
   // Col 4: Total Disp. Venta
-  doc.text(formatQuantity(auditedTotals.dispVentaCant), colX + cols[4].width - 5, y + 11.5, { align: "right" });
+  doc.text(formatQuantity(auditedTotals.dispVentaCant), colX + cols[4].width - 4, y + 11.5, { align: "right" });
   colX += cols[4].width;
 
-  // Col 5: Total Inv. Final
-  doc.text(formatQuantity(auditedTotals.invFinalCant), colX + cols[5].width - 5, y + 11.5, { align: "right" });
+  // Col 5: Total Mermas
+  const mermasStr = auditedTotals.mermasCant > 0 ? `-${formatQuantity(auditedTotals.mermasCant)}` : "-";
+  doc.text(mermasStr, colX + cols[5].width - 4, y + 11.5, { align: "right" });
   colX += cols[5].width;
 
-  // Col 6: Total Vendido
-  doc.text(formatQuantity(auditedTotals.vendidoCant), colX + cols[6].width - 5, y + 11.5, { align: "right" });
+  // Col 6: Total Inv. Final
+  doc.text(formatQuantity(auditedTotals.invFinalCant), colX + cols[6].width - 4, y + 11.5, { align: "right" });
   colX += cols[6].width;
 
-  // Col 7: Precio (Vacío en totales)
-  doc.text("-", colX + cols[7].width - 5, y + 11.5, { align: "right" });
+  // Col 7: Total Vendido
+  doc.text(formatQuantity(auditedTotals.vendidoCant), colX + cols[7].width - 4, y + 11.5, { align: "right" });
   colX += cols[7].width;
 
-  // Col 8: Total Importe CUP
-  doc.text(formatAccounting(auditedTotals.importeVendido), colX + cols[8].width - 5, y + 11.5, { align: "right" });
+  // Col 8: Costo Unit. (-)
+  doc.text("-", colX + cols[8].width - 4, y + 11.5, { align: "right" });
   colX += cols[8].width;
 
-  // Col 9: Total Costo Total
-  doc.text(formatAccounting(auditedTotals.costoTotal), colX + cols[9].width - 5, y + 11.5, { align: "right" });
+  // Col 9: Precio Vta (-)
+  doc.text("-", colX + cols[9].width - 4, y + 11.5, { align: "right" });
   colX += cols[9].width;
 
-  // Col 10: Margen General %
-  doc.text(`${auditedTotals.margenPct.toFixed(1)}%`, colX + cols[10].width - 5, y + 11.5, { align: "right" });
+  // Col 10: Total Importe CUP
+  doc.text(formatAccounting(auditedTotals.importeVendido), colX + cols[10].width - 4, y + 11.5, { align: "right" });
+  colX += cols[10].width;
+
+  // Col 11: Total Costo de Venta
+  doc.text(formatAccounting(auditedTotals.costoTotal), colX + cols[11].width - 4, y + 11.5, { align: "right" });
+  colX += cols[11].width;
+
+  // Col 12: Total Utilidad (CUP)
+  doc.text(formatAccounting(auditedTotals.gananciaBruta), colX + cols[12].width - 4, y + 11.5, { align: "right" });
+  colX += cols[12].width;
+
+  // Col 13: Margen General %
+  doc.text(`${auditedTotals.margenPct.toFixed(1)}%`, colX + cols[13].width - 4, y + 11.5, { align: "right" });
 
   y += 24;
 

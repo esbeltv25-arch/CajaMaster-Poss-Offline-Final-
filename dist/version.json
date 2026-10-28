@@ -1,9 +1,9 @@
 {
-  "version": "1.3.6",
-  "versionCode": 1060,
-  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.3.6.zip",
+  "version": "1.3.7",
+  "versionCode": 1070,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.3.7.zip",
   "mandatory": false,
-  "changelog": "Auditoría contable Nivel 1: Sentinel preventivo anti-descuadre, corrección matemática y visual de reportes IPVE/IPV, alineación de columnas PDF y unificación de máscaras contables",
+  "changelog": "Auditoría IPVE Fiscal: Normalización de U/M (U), nombres en Title Case, Costo Unitario, Control de Mermas, Costo de Venta y Utilidad CUP en PDF, Web y CSV",
   "releaseDate": "2026-10-28",
   "minNativeVersionCode": 1000
 }

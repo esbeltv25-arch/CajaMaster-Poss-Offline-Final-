@@ -23,7 +23,7 @@ import {
 } from "../components/Icons";
 import { generateIPVReport, IPVRow } from "../utils/ipv";
 import { formatCurrency, roundCurrency, formatAccounting, formatQuantity } from "../utils/currency";
-import { runIPVSentinel } from "../utils/accountingSentinel";
+import { runIPVSentinel, normalizeUnit, toTitleCase } from "../utils/accountingSentinel";
 import { generateIPVReportPdf, buildIPVReportPdfPayload } from "../utils/pdfExport";
 import { downloadOrShareIpvCsv, buildIpvCsvPayload, buildSalesCsvPayload } from "../utils/csvExport";
 import {
@@ -1162,63 +1162,74 @@ export function ReportesScreen() {
               ref={tableContainerRef}
               className="overflow-x-auto relative rounded-2xl border border-slate-200 shadow-inner scroll-smooth"
             >
-              <table className="w-full text-[11px] text-left border-collapse min-w-[840px]">
+              <table className="w-full text-[11px] text-left border-collapse min-w-[1050px]">
                 <thead>
                   <tr className="bg-slate-900 text-white text-[10px] uppercase font-extrabold sticky top-0 z-30">
                     <th className="p-2.5 border border-slate-800 sticky left-0 bg-slate-900 z-30 min-w-[150px] shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
                       Producto
                     </th>
-                    <th className="p-2 border border-slate-800 text-center min-w-[45px]">U/M</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[70px]">Inv. Inicial</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[65px]">Entradas</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[70px]">Disp. Venta</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[70px]">Inv. Final</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[75px] bg-slate-800">Vendido</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[70px]">Precio</th>
-                    <th className="p-2 border border-slate-800 text-right bg-amber-500 text-slate-950 min-w-[95px] font-black">
+                    <th className="p-2 border border-slate-800 text-center min-w-[40px]">U/M</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[65px]">Inv. Inic.</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[60px]">Entradas</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[65px]">Disp. Vta</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[60px] text-rose-300">Mermas</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[65px]">Inv. Final</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[65px] bg-slate-800">Vendido</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[75px] text-slate-300">Costo Unit.</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[75px]">Precio Vta</th>
+                    <th className="p-2 border border-slate-800 text-right bg-amber-500 text-slate-950 min-w-[90px] font-black">
                       Importe CUP
                     </th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[80px]">Costo Total</th>
-                    <th className="p-2 border border-slate-800 text-right min-w-[65px]">Margen</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[85px]">Costo de Venta</th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[85px] bg-emerald-950/40 text-emerald-300 font-extrabold">
+                      Utilidad CUP
+                    </th>
+                    <th className="p-2 border border-slate-800 text-right min-w-[60px]">Margen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {ipvRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="p-8 text-center text-slate-500 font-semibold text-xs">
+                      <td colSpan={14} className="p-8 text-center text-slate-500 font-semibold text-xs">
                         No se encontraron productos que coincidan con la búsqueda.
                       </td>
                     </tr>
                   ) : (
                     ipvRows.map((r) => {
-                      const itemProfit = r.importeVendido - r.costoTotal;
-                      const itemMargin = r.importeVendido > 0 ? (itemProfit / r.importeVendido) * 100 : 0;
+                      const cleanTitleName = toTitleCase(r.name);
+                      const cleanUnit = normalizeUnit(r.unit);
 
                       return (
                         <tr key={r.productId} className="hover:bg-slate-50 transition">
-                          {/* Sticky Product Column */}
+                          {/* Sticky Product Column con Capitalización Title Case */}
                           <td className="p-2.5 border border-slate-200 dark:border-slate-800 font-extrabold text-slate-950 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">
-                            <div className="truncate max-w-[150px] sm:max-w-[200px]" title={r.name}>
-                              {r.name}
+                            <div className="truncate max-w-[150px] sm:max-w-[200px]" title={cleanTitleName}>
+                              {cleanTitleName}
                             </div>
                           </td>
-                          <td className="p-2 border border-slate-200 dark:border-slate-800 text-center font-semibold text-slate-600 dark:text-slate-400">
-                            {r.unit}
+                          <td className="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold text-slate-600 dark:text-slate-400">
+                            {cleanUnit}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-medium">
-                            {r.invInicialCant}
+                            {formatQuantity(r.invInicialCant)}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono text-emerald-700 dark:text-emerald-400 font-bold">
-                            {r.entradasCant > 0 ? `+${r.entradasCant}` : "-"}
+                            {r.entradasCant > 0 ? `+${formatQuantity(r.entradasCant)}` : "-"}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {r.dispVentaCant}
+                            {formatQuantity(r.dispVentaCant)}
+                          </td>
+                          <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-medium text-rose-600 dark:text-rose-400">
+                            {r.mermasCant > 0 ? `-${formatQuantity(r.mermasCant)}` : "-"}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {r.invFinalCant}
+                            {formatQuantity(r.invFinalCant)}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-extrabold text-slate-950 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/40">
-                            {r.vendidoCant}
+                            {formatQuantity(r.vendidoCant)}
+                          </td>
+                          <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono text-slate-600 dark:text-slate-400">
+                            {formatAccounting(r.costoUnitario)}
                           </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono text-slate-700 dark:text-slate-300">
                             {formatAccounting(r.precioVenta)}
@@ -1229,8 +1240,11 @@ export function ReportesScreen() {
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono text-slate-700 dark:text-slate-300">
                             {formatAccounting(r.costoTotal)}
                           </td>
+                          <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">
+                            {formatAccounting(r.gananciaBruta)}
+                          </td>
                           <td className="p-2 border border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                            {r.importeVendido > 0 ? `${itemMargin.toFixed(1)}%` : "-"}
+                            {r.importeVendido > 0 ? `${r.margenPct.toFixed(1)}%` : "-"}
                           </td>
                         </tr>
                       );
@@ -1252,18 +1266,25 @@ export function ReportesScreen() {
                     <td className="p-2 border border-slate-800 text-right font-mono text-slate-200">
                       {formatQuantity(totals.dispVentaCant)}
                     </td>
+                    <td className="p-2 border border-slate-800 text-right font-mono text-rose-400">
+                      {totals.mermasCant > 0 ? `-${formatQuantity(totals.mermasCant)}` : "-"}
+                    </td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-slate-200">
                       {formatQuantity(totals.invFinalCant)}
                     </td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-amber-300">
                       {formatQuantity(totals.vendidoCant)}
                     </td>
-                    <td className="p-2 border border-slate-800 text-right">-</td>
+                    <td className="p-2 border border-slate-800 text-right text-slate-500">-</td>
+                    <td className="p-2 border border-slate-800 text-right text-slate-500">-</td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-amber-400 font-black">
                       {formatAccounting(totals.importeVendido)}
                     </td>
                     <td className="p-2 border border-slate-800 text-right font-mono">
                       {formatAccounting(totals.costoTotal)}
+                    </td>
+                    <td className="p-2 border border-slate-800 text-right font-mono text-emerald-400 font-black">
+                      {formatAccounting(totals.gananciaBruta)}
                     </td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-emerald-400">
                       {totals.margenPct.toFixed(1)}%
@@ -1276,8 +1297,8 @@ export function ReportesScreen() {
             /* VIEW MODE: MOBILE CARDS */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {ipvRows.map((r) => {
-                const itemProfit = r.importeVendido - r.costoTotal;
-                const itemMargin = r.importeVendido > 0 ? (itemProfit / r.importeVendido) * 100 : 0;
+                const cleanTitleName = toTitleCase(r.name);
+                const cleanUnit = normalizeUnit(r.unit);
 
                 return (
                   <div
@@ -1286,14 +1307,14 @@ export function ReportesScreen() {
                   >
                     <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2">
                       <div>
-                        <h4 className="font-extrabold text-sm text-slate-900">{r.name}</h4>
+                        <h4 className="font-extrabold text-sm text-slate-900">{cleanTitleName}</h4>
                         <span className="text-[11px] text-slate-500 font-medium">
-                          U/M: <strong className="text-slate-800">{r.unit}</strong> • Precio: {formatAccounting(r.precioVenta)} CUP • Costo: {formatAccounting(r.costoUnitario)} CUP
+                          U/M: <strong className="text-slate-800">{cleanUnit}</strong> • Costo Unit.: {formatAccounting(r.costoUnitario)} CUP • Precio: {formatAccounting(r.precioVenta)} CUP
                         </span>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] font-extrabold uppercase text-slate-500 block">
-                          IMPORTE
+                          IMPORTE VENTA
                         </span>
                         <span className="font-mono font-black text-sm text-amber-600">
                           {formatAccounting(r.importeVendido)} CUP
@@ -1301,36 +1322,45 @@ export function ReportesScreen() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div className="p-2 rounded-xl bg-white border border-slate-200">
-                        <div className="text-[9px] font-extrabold text-slate-400 uppercase">INICIAL</div>
+                    <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
+                      <div className="p-1.5 rounded-xl bg-white border border-slate-200">
+                        <div className="text-[8.5px] font-extrabold text-slate-400 uppercase">INICIAL</div>
                         <div className="font-mono font-bold text-slate-800">{formatQuantity(r.invInicialCant)}</div>
                       </div>
-                      <div className="p-2 rounded-xl bg-white border border-slate-200">
-                        <div className="text-[9px] font-extrabold text-slate-400 uppercase">ENTRADAS</div>
+                      <div className="p-1.5 rounded-xl bg-white border border-slate-200">
+                        <div className="text-[8.5px] font-extrabold text-slate-400 uppercase">ENTRADAS</div>
                         <div className="font-mono font-bold text-emerald-700">
                           {r.entradasCant > 0 ? `+${formatQuantity(r.entradasCant)}` : "-"}
                         </div>
                       </div>
-                      <div className="p-2 rounded-xl bg-white border border-slate-200">
-                        <div className="text-[9px] font-extrabold text-slate-400 uppercase">DISPONIBLE</div>
+                      <div className="p-1.5 rounded-xl bg-white border border-slate-200">
+                        <div className="text-[8.5px] font-extrabold text-slate-400 uppercase">DISPONIBLE</div>
                         <div className="font-mono font-bold text-slate-900">{formatQuantity(r.dispVentaCant)}</div>
                       </div>
-                      <div className="p-2 rounded-xl bg-white border border-slate-200">
-                        <div className="text-[9px] font-extrabold text-slate-400 uppercase">FINAL</div>
+                      <div className="p-1.5 rounded-xl bg-white border border-slate-200">
+                        <div className="text-[8.5px] font-extrabold text-rose-400 uppercase">MERMAS</div>
+                        <div className="font-mono font-bold text-rose-600">
+                          {r.mermasCant > 0 ? `-${formatQuantity(r.mermasCant)}` : "-"}
+                        </div>
+                      </div>
+                      <div className="p-1.5 rounded-xl bg-white border border-slate-200">
+                        <div className="text-[8.5px] font-extrabold text-slate-400 uppercase">FINAL</div>
                         <div className="font-mono font-bold text-slate-800">{formatQuantity(r.invFinalCant)}</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
+                    <div className="flex flex-wrap items-center justify-between text-xs pt-1 border-t border-slate-200 gap-2">
                       <span className="text-slate-600 font-semibold">
-                        Vendidas: <strong className="text-slate-900">{formatQuantity(r.vendidoCant)} {r.unit}</strong>
+                        Vendidas: <strong className="text-slate-900">{formatQuantity(r.vendidoCant)} {cleanUnit}</strong>
                       </span>
                       <span className="text-slate-600 font-semibold">
-                        Costo: <strong className="text-slate-900">{formatAccounting(r.costoTotal)}</strong>
+                        Costo Venta: <strong className="text-slate-900">{formatAccounting(r.costoTotal)}</strong>
+                      </span>
+                      <span className="text-emerald-700 font-bold">
+                        Utilidad: <strong>+{formatAccounting(r.gananciaBruta)} CUP</strong>
                       </span>
                       <span className="font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md text-[11px]">
-                        Margen: {itemMargin.toFixed(1)}%
+                        Margen: {r.margenPct.toFixed(1)}%
                       </span>
                     </div>
                   </div>

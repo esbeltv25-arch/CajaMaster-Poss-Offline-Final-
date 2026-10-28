@@ -59,16 +59,97 @@ export interface SentinelIPVResult {
 }
 
 /**
- * Sanitiza cualquier texto de entrada eliminando retornos de carro, saltos de línea y tabuladores
- * que romperían las filas de tablas impresas en el PDF.
+ * Normaliza y fuerza el uso estricto de una unidad de medida limpia en mayúsculas ("U").
+ * Erradica caracteres corruptos derivados de malas codificaciones (como 'Π' en Audífonos),
+ * espacios extraños o glifos no imprimibles.
  */
-export function sanitizeTextForPdf(text: string | null | undefined, maxChars = 38): string {
+export function normalizeUnit(rawUnit?: string | null): string {
+  if (!rawUnit) return "U";
+  const trimmed = String(rawUnit).trim();
+  // Erradicar glifos corruptos como 'Π', 'π' o símbolos especiales no estándar
+  if (/^[^\w\s]+$/i.test(trimmed) || trimmed === "Π" || trimmed === "π" || trimmed.charCodeAt(0) > 127) {
+    return "U";
+  }
+  const lower = trimmed.toLowerCase();
+  if (
+    lower === "u" ||
+    lower === "ud" ||
+    lower === "uds" ||
+    lower === "unidad" ||
+    lower === "unidades" ||
+    lower === "pz" ||
+    lower === "pza" ||
+    lower === "pzas" ||
+    lower === "pieza" ||
+    lower === "piezas" ||
+    lower === "unit" ||
+    lower === "un"
+  ) {
+    return "U";
+  }
+  if (lower === "kg" || lower === "kgs" || lower === "kilo" || lower === "kilogramo") {
+    return "KG";
+  }
+  if (lower === "g" || lower === "gr" || lower === "gramos") {
+    return "G";
+  }
+  if (lower === "l" || lower === "lt" || lower === "lts" || lower === "litro" || lower === "litros") {
+    return "L";
+  }
+  if (lower === "ml") {
+    return "ML";
+  }
+  if (lower === "m" || lower === "mts" || lower === "metro" || lower === "metros") {
+    return "M";
+  }
+  // Para cualquier otra unidad alfanumérica corta limpia, poner en mayúsculas
+  const cleaned = trimmed.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return cleaned.length > 0 && cleaned.length <= 4 ? cleaned : "U";
+}
+
+/**
+ * Convierte un texto a Formato de Título (Title Case), asegurando que cada palabra
+ * inicie con letra mayúscula (ej: "ratón inalámbrico" -> "Ratón Inalámbrico",
+ * "audífonos samsung" -> "Audífonos Samsung").
+ */
+export function toTitleCase(text: string | null | undefined): string {
+  if (!text) return "";
+  const cleaned = String(text)
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (!cleaned) return "";
+
+  // Separar por palabras y capitalizar la primera letra respetando tildes y caracteres hispanos
+  return cleaned
+    .split(" ")
+    .map((word) => {
+      if (!word) return "";
+      const lower = word.toLowerCase();
+      // Siglas comunes que deben quedar todas en mayúsculas
+      if (["usb", "led", "rgb", "hd", "fhd", "ssd", "hdd", "ram", "cpu", "tv", "dvd", "pc", "pos", "pro", "max", "plus"].includes(lower)) {
+        return lower.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+/**
+ * Sanitiza cualquier texto de entrada eliminando retornos de carro, saltos de línea y tabuladores
+ * que romperían las filas de tablas impresas en el PDF, y aplica Title Case si se indica.
+ */
+export function sanitizeTextForPdf(text: string | null | undefined, maxChars = 38, applyTitleCase = false): string {
   if (!text) return "Sin descripción";
-  // Eliminar \r, \n, \t y espacios duplicados
   let cleaned = String(text)
     .replace(/[\r\n\t]+/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
+
+  if (applyTitleCase) {
+    cleaned = toTitleCase(cleaned);
+  }
 
   if (cleaned.length > maxChars) {
     cleaned = cleaned.substring(0, maxChars - 2).trim() + "..";
@@ -87,11 +168,15 @@ export function runIPVSentinel(
   const anomalies: SentinelAnomaly[] = [];
   let healedCount = 0;
 
-  // Sanitizar y validar cada fila individual
+  // Sanitizar, capitalizar y validar cada fila individual
   const healedRows: IPVRow[] = rows.map((raw, idx) => {
-    const rowName = sanitizeTextForPdf(raw.name || `Producto #${idx + 1}`, 36);
+    // Aplicar Title Case estricto a los nombres de los productos
+    const rawName = raw.name || `Producto #${idx + 1}`;
+    const capitalizedName = toTitleCase(rawName);
+    const rowName = sanitizeTextForPdf(capitalizedName, 36);
     const sku = sanitizeTextForPdf(raw.sku || "-", 18);
-    const unit = sanitizeTextForPdf(raw.unit || "u", 8);
+    // Forzar unidad de medida normalizada a 'U' / mayúscula estandarizada
+    const unit = normalizeUnit(raw.unit);
 
     // Valores cuantitativos garantizados >= 0
     let invInicialCant = Math.max(0, Number(raw.invInicialCant) || 0);
@@ -305,9 +390,9 @@ export function runInventoryCatalogSentinel(products: Product[]): {
   let totalSaleVal = 0;
 
   const verifiedProducts = products.map((p, idx) => {
-    const cleanName = sanitizeTextForPdf(p.name || `Producto #${idx + 1}`, 36);
-    const cleanCategory = sanitizeTextForPdf(p.category || "General", 20);
-    const cleanUnit = sanitizeTextForPdf(p.unit || "u", 8);
+    const cleanName = sanitizeTextForPdf(toTitleCase(p.name || `Producto #${idx + 1}`), 36);
+    const cleanCategory = sanitizeTextForPdf(toTitleCase(p.category || "General"), 20);
+    const cleanUnit = normalizeUnit(p.unit);
 
     const stock = Math.max(0, Number(p.stock) || 0);
     const cost = roundCurrency(Math.max(0, Number(p.cost) || 0));
