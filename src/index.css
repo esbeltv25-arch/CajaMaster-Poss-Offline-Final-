@@ -1,0 +1,430 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg: #F1EFE8;
+  --color-bg-soft: #E8E5DC;
+  --color-ink: #0E3A2F;
+  --color-ink-soft: #1A4D3F;
+  --color-gold: #F5B82E;
+  --color-gold-deep: #E8A911;
+  --color-danger: #EF4444;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Light / Soft Neu shadows */
+.neu {
+  background: var(--color-bg);
+  box-shadow:
+    6px 6px 16px rgba(0, 0, 0, 0.07),
+    -6px -6px 16px rgba(255, 255, 255, 0.8);
+}
+
+.neu-sm {
+  background: var(--color-bg);
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.06),
+    -3px -3px 8px rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.neu-inset {
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.06),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -6px rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* =========================================================================
+   DARK MODE COMPREHENSIVE ACCESSIBLE SYSTEM
+   ========================================================================= */
+
+html.dark,
+body.dark-mode {
+  background-color: var(--color-bg, #0F172A) !important;
+  color: var(--color-ink, #F8FAFC) !important;
+  color-scheme: dark;
+}
+
+/* Dark surfaces for cards & containers */
+html.dark .card,
+body.dark-mode .card {
+  background: var(--color-card-bg, #1E293B) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.6);
+  color: #F8FAFC !important;
+}
+
+/* Dark screen wrappers and surfaces */
+html.dark .bg-white:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-white:not(.keep-light):not(.receipt-paper) {
+  background-color: var(--color-bg, #0F172A) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-slate-50:not(.keep-light):not(.receipt-paper) {
+  background-color: #162032 !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-slate-100:not(.keep-light):not(.receipt-paper) {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-200:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-slate-200:not(.keep-light):not(.receipt-paper) {
+  background-color: #2D3D54 !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark mode for semi-transparent white / slate surfaces (modals, search bars, headers) */
+html.dark [class*="bg-white/6"]:not(.keep-light):not(.receipt-paper),
+html.dark [class*="bg-white/7"]:not(.keep-light):not(.receipt-paper),
+html.dark [class*="bg-white/8"]:not(.keep-light):not(.receipt-paper),
+html.dark [class*="bg-white/9"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-white/6"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-white/7"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-white/8"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-white/9"]:not(.keep-light):not(.receipt-paper),
+html.dark [class*="bg-slate-50/"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-slate-50/"]:not(.keep-light):not(.receipt-paper),
+html.dark [class*="bg-slate-100/"]:not(.keep-light):not(.receipt-paper),
+body.dark-mode [class*="bg-slate-100/"]:not(.keep-light):not(.receipt-paper) {
+  background-color: var(--color-card-bg, #1E293B) !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Neu Elements */
+html.dark .neu,
+body.dark-mode .neu {
+  background: var(--color-card-bg, #1E293B) !important;
+  box-shadow:
+    5px 5px 15px rgba(0, 0, 0, 0.5),
+    -5px -5px 15px rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .neu-sm,
+body.dark-mode .neu-sm {
+  background: var(--color-card-bg, #1E293B) !important;
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.4),
+    -3px -3px 8px rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .neu-inset,
+body.dark-mode .neu-inset {
+  background: rgba(0, 0, 0, 0.45) !important;
+  box-shadow:
+    inset 2px 2px 6px rgba(0, 0, 0, 0.6),
+    inset -2px -2px 6px rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Inputs, Selects & Textareas - Full Accessibility & Never White-on-White */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(.keep-light):not(.receipt-paper),
+html.dark select:not(.keep-light):not(.receipt-paper),
+html.dark textarea:not(.keep-light):not(.receipt-paper),
+body.dark-mode input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(.keep-light):not(.receipt-paper),
+body.dark-mode select:not(.keep-light):not(.receipt-paper),
+body.dark-mode textarea:not(.keep-light):not(.receipt-paper) {
+  background-color: #162032 !important;
+  color: #F8FAFC !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+html.dark input.bg-transparent,
+html.dark select.bg-transparent,
+html.dark textarea.bg-transparent,
+body.dark-mode input.bg-transparent,
+body.dark-mode select.bg-transparent,
+body.dark-mode textarea.bg-transparent {
+  background-color: transparent !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus,
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+  background-color: #1E293B !important;
+  border-color: var(--color-gold, #F5B82E) !important;
+  box-shadow: 0 0 0 1px var(--color-gold, #F5B82E) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder,
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #64748B !important;
+}
+
+html.dark option,
+body.dark-mode option {
+  background: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+/* General Dark Text Overrides (EXCEPT inside keep-light and receipt-paper) */
+html.dark :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *):not(.bg-amber-400):not(.bg-amber-400 *):not(.bg-yellow-400):not(.bg-yellow-400 *).text-slate-900,
+html.dark :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *):not(.bg-amber-400):not(.bg-amber-400 *):not(.bg-yellow-400):not(.bg-yellow-400 *).text-slate-800,
+body.dark-mode :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *):not(.bg-amber-400):not(.bg-amber-400 *):not(.bg-yellow-400):not(.bg-yellow-400 *).text-slate-900,
+body.dark-mode :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *):not(.bg-amber-400):not(.bg-amber-400 *):not(.bg-yellow-400):not(.bg-yellow-400 *).text-slate-800 {
+  color: #F8FAFC !important;
+}
+
+html.dark :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-700,
+html.dark :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-600,
+body.dark-mode :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-700,
+body.dark-mode :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-600 {
+  color: #CBD5E1 !important;
+}
+
+html.dark :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-500,
+body.dark-mode :not(.keep-light):not(.keep-light *):not(.receipt-paper):not(.receipt-paper *).text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+/* =========================================================================
+   PROTECTED BRIGHT ACCENT BUTTONS & BADGES (Preserve Dark Text Contrast)
+   ========================================================================= */
+
+html.dark .bg-amber-400,
+html.dark .bg-amber-300,
+html.dark .bg-amber-500,
+html.dark .bg-yellow-300,
+html.dark .bg-yellow-400,
+html.dark .bg-yellow-500,
+html.dark .bg-gold,
+body.dark-mode .bg-amber-400,
+body.dark-mode .bg-amber-300,
+body.dark-mode .bg-amber-500,
+body.dark-mode .bg-yellow-300,
+body.dark-mode .bg-yellow-400,
+body.dark-mode .bg-yellow-500,
+body.dark-mode .bg-gold {
+  color: #0F172A !important;
+}
+
+html.dark .bg-amber-400 *,
+html.dark .bg-amber-300 *,
+html.dark .bg-amber-500 *,
+html.dark .bg-yellow-300 *,
+html.dark .bg-yellow-400 *,
+html.dark .bg-yellow-500 *,
+body.dark-mode .bg-amber-400 *,
+body.dark-mode .bg-amber-300 *,
+body.dark-mode .bg-amber-500 *,
+body.dark-mode .bg-yellow-300 *,
+body.dark-mode .bg-yellow-400 *,
+body.dark-mode .bg-yellow-500 * {
+  color: #0F172A !important;
+}
+
+/* Translucent pastel badges adapted for high dark mode readability */
+html.dark .bg-amber-100:not(.keep-light):not(.receipt-paper),
+html.dark .bg-amber-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-amber-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-amber-50:not(.keep-light):not(.receipt-paper) {
+  background-color: rgba(245, 184, 46, 0.16) !important;
+  color: #FCD34D !important;
+  border-color: rgba(245, 184, 46, 0.3) !important;
+}
+
+html.dark .bg-amber-100 *:not(.receipt-paper *),
+html.dark .bg-amber-50 *:not(.receipt-paper *),
+body.dark-mode .bg-amber-100 *:not(.receipt-paper *),
+body.dark-mode .bg-amber-50 *:not(.receipt-paper *) {
+  color: #FCD34D !important;
+}
+
+html.dark .bg-emerald-100:not(.keep-light):not(.receipt-paper),
+html.dark .bg-emerald-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-emerald-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-emerald-50:not(.keep-light):not(.receipt-paper) {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+html.dark .bg-emerald-100 *:not(.receipt-paper *),
+html.dark .bg-emerald-50 *:not(.receipt-paper *),
+body.dark-mode .bg-emerald-100 *:not(.receipt-paper *),
+body.dark-mode .bg-emerald-50 *:not(.receipt-paper *) {
+  color: #6EE7B7 !important;
+}
+
+html.dark .bg-rose-100:not(.keep-light):not(.receipt-paper),
+html.dark .bg-rose-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-rose-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-rose-50:not(.keep-light):not(.receipt-paper) {
+  background-color: rgba(244, 63, 94, 0.16) !important;
+  color: #FDA4AF !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+html.dark .bg-rose-100 *:not(.receipt-paper *),
+html.dark .bg-rose-50 *:not(.receipt-paper *),
+body.dark-mode .bg-rose-100 *:not(.receipt-paper *),
+body.dark-mode .bg-rose-50 *:not(.receipt-paper *) {
+  color: #FDA4AF !important;
+}
+
+html.dark .bg-blue-100:not(.keep-light):not(.receipt-paper),
+html.dark .bg-blue-50:not(.keep-light):not(.receipt-paper),
+html.dark .bg-sky-100:not(.keep-light):not(.receipt-paper),
+html.dark .bg-sky-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-blue-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-blue-50:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-sky-100:not(.keep-light):not(.receipt-paper),
+body.dark-mode .bg-sky-50:not(.keep-light):not(.receipt-paper) {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  color: #93C5FD !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+html.dark .bg-blue-100 *:not(.receipt-paper *),
+html.dark .bg-blue-50 *:not(.receipt-paper *),
+html.dark .bg-sky-100 *:not(.receipt-paper *),
+html.dark .bg-sky-50 *:not(.receipt-paper *),
+body.dark-mode .bg-blue-100 *:not(.receipt-paper *),
+body.dark-mode .bg-blue-50 *:not(.receipt-paper *),
+body.dark-mode .bg-sky-100 *:not(.receipt-paper *),
+body.dark-mode .bg-sky-50 *:not(.receipt-paper *) {
+  color: #93C5FD !important;
+}
+
+/* =========================================================================
+   PHYSICAL THERMAL RECEIPT & PRINTABLE PAPER PROTECTION
+   Must always stay light paper with crisp black/dark ink
+   ========================================================================= */
+
+.receipt-paper,
+.keep-light {
+  background-color: #FFFDF9 !important;
+  color: #0F172A !important;
+  color-scheme: light !important;
+}
+
+html.dark .receipt-paper,
+html.dark .receipt-paper *,
+body.dark-mode .receipt-paper,
+body.dark-mode .receipt-paper *,
+html.dark .keep-light,
+html.dark .keep-light *,
+body.dark-mode .keep-light,
+body.dark-mode .keep-light * {
+  color: #0F172A !important;
+}
+
+html.dark .receipt-paper .text-slate-500,
+html.dark .receipt-paper .text-slate-600,
+html.dark .receipt-paper .text-slate-400,
+body.dark-mode .receipt-paper .text-slate-500,
+body.dark-mode .receipt-paper .text-slate-600,
+body.dark-mode .receipt-paper .text-slate-400,
+html.dark .keep-light .text-slate-500,
+html.dark .keep-light .text-slate-600,
+html.dark .keep-light .text-slate-400,
+body.dark-mode .keep-light .text-slate-500,
+body.dark-mode .keep-light .text-slate-600,
+body.dark-mode .keep-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.dark .receipt-paper .text-rose-600,
+body.dark-mode .receipt-paper .text-rose-600,
+html.dark .keep-light .text-rose-600,
+body.dark-mode .keep-light .text-rose-600 {
+  color: #DC2626 !important;
+}
+
+/* Dark Borders */
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-black\/5,
+html.dark .border-black\/10,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-slate-300,
+body.dark-mode .border-black\/5,
+body.dark-mode .border-black\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Custom scrollbars */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.25);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes pop {
+  0% { transform: scale(0.94); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scan {
+  0% { top: 4%; opacity: 0.8; }
+  50% { top: 96%; opacity: 1; }
+  100% { top: 4%; opacity: 0.8; }
+}
+

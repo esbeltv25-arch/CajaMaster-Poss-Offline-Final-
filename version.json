@@ -1,0 +1,9 @@
+{
+  "version": "1.3.6",
+  "versionCode": 1060,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.3.6.zip",
+  "mandatory": false,
+  "changelog": "Auditoría contable Nivel 1: Sentinel preventivo anti-descuadre, corrección matemática y visual de reportes IPVE/IPV, alineación de columnas PDF y unificación de máscaras contables",
+  "releaseDate": "2026-10-28",
+  "minNativeVersionCode": 1000
+}
