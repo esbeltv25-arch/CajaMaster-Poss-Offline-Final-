@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- GLYPH GROUP SCALED TO SAFE ZONE (80% scale centered at 512,512) -->
+  <g transform="translate(512, 512) scale(0.82)">
+    <!-- 1. Receipt / Ticket -->
+    <g transform="translate(0, -145)">
+      <path d="M-150,-160 L150,-160 L150,110 L100,85 L50,110 L0,85 L-50,110 L-100,85 L-150,110 Z" fill="#F8FAFC"/>
+      <rect x="-115" y="-125" width="125" height="18" rx="9" fill="url(#goldGrad)"/>
+      <circle cx="95" cy="-116" r="14" fill="url(#goldGrad)"/>
+      <rect x="-115" y="-85" width="230" height="14" rx="7" fill="#94A3B8" opacity="0.8"/>
+      <rect x="-115" y="-55" width="160" height="14" rx="7" fill="#CBD5E1" opacity="0.8"/>
+      <rect x="-115" y="-18" width="230" height="36" rx="12" fill="url(#emeraldGrad)"/>
+      <rect x="-90" y="-7" width="80" height="14" rx="7" fill="#FFFFFF"/>
+      <circle cx="75" cy="0" r="7" fill="#FFFFFF"/>
+      <circle cx="95" cy="0" r="7" fill="#FFFFFF"/>
+    </g>
+
+    <!-- 2. Base Platform Shadow -->
+    <rect x="-240" y="240" width="480" height="40" rx="20" fill="#000000" opacity="0.6"/>
+    
+    <!-- 3. Cash Drawer -->
+    <rect x="-230" y="140" width="460" height="115" rx="30" fill="#1E293B" stroke="#334155" stroke-width="8"/>
+    <rect x="-110" y="190" width="220" height="16" rx="8" fill="#0B1120"/>
+    <circle cx="130" cy="198" r="9" fill="url(#goldGrad)"/>
+
+    <!-- 4. Terminal Main Body -->
+    <rect x="-270" y="-45" width="540" height="215" rx="36" fill="#0B1120" stroke="#334155" stroke-width="10"/>
+    <rect x="-246" y="-22" width="492" height="168" rx="26" fill="url(#screenGrad)"/>
+
+    <!-- Screen Header -->
+    <rect x="-220" y="2" width="440" height="38" rx="12" fill="url(#emeraldGrad)"/>
+    <circle cx="-190" cy="21" r="8" fill="#FFFFFF"/>
+    <rect x="-170" y="14" width="110" height="14" rx="7" fill="#FFFFFF" opacity="0.95"/>
+    <circle cx="190" cy="21" r="8" fill="url(#goldGrad)"/>
+
+    <!-- Keypad -->
+    <rect x="-220" y="60" width="85" height="66" rx="16" fill="#0F172A"/>
+    <circle cx="-177" cy="93" r="15" fill="#38BDF8"/>
+
+    <rect x="-118" y="60" width="85" height="66" rx="16" fill="#0F172A"/>
+    <circle cx="-75" cy="93" r="15" fill="url(#goldGrad)"/>
+
+    <!-- Action Button -->
+    <rect x="-16" y="60" width="236" height="66" rx="16" fill="url(#emeraldGrad)"/>
+    <path d="M70,93 L92,112 L142,72" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="18" y="103" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="34" letter-spacing="1">CUP</text>
+  </g>
+</svg>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CajaMaster POS</string>
+    <string name="title_activity_main">CajaMaster POS</string>
+    <string name="package_name">com.cajamaster.pos</string>
+    <string name="custom_url_scheme">com.cajamaster.pos</string>
+</resources>
