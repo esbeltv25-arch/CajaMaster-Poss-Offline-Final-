@@ -78,7 +78,7 @@ define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "version.json",
-    "revision": "45513b7332ecb381f190de828ca4490a"
+    "revision": "96dea306c85adbe92b5cb477c603419d"
   }, {
     "url": "splash-icon.svg",
     "revision": "5b7b98dd10200530d0b6870d4213945c"
@@ -90,7 +90,7 @@ define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
     "revision": "8858f52302909961a611ee9ce0e672d0"
   }, {
     "url": "index.html",
-    "revision": "a8d10669e2a7ae9743ccc06625fa86ca"
+    "revision": "622958f4960566e606af57d965e54a1e"
   }, {
     "url": "icon.svg",
     "revision": "cdbdd088aecc021cc198e9ac90f1c1fb"
@@ -131,22 +131,22 @@ define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
     "url": "assets/workbox-window.prod.es5-BBnX5xw4.js",
     "revision": null
   }, {
-    "url": "assets/web-DuG9Ufp9.js",
+    "url": "assets/web-eXfR4Xns.js",
     "revision": null
   }, {
-    "url": "assets/web-DHWAVnpU.js",
+    "url": "assets/web-IxZBXhn3.js",
     "revision": null
   }, {
     "url": "assets/purify.es-CYR4BTuT.js",
     "revision": null
   }, {
-    "url": "assets/index.es-DXk7I3OJ.js",
+    "url": "assets/index.es-B2lrOLg4.js",
     "revision": null
   }, {
-    "url": "assets/index-MuEJF-8-.js",
+    "url": "assets/index-fl7jt8mr.js",
     "revision": null
   }, {
-    "url": "assets/index-BPkgCHSk.css",
+    "url": "assets/index-BVKHoEEj.css",
     "revision": null
   }, {
     "url": "assets/html2canvas.esm-QH1iLAAe.js",
