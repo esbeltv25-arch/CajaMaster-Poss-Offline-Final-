@@ -78,7 +78,7 @@ define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "version.json",
-    "revision": "45513b7332ecb381f190de828ca4490a"
+    "revision": "96dea306c85adbe92b5cb477c603419d"
   }, {
     "url": "splash-icon.svg",
     "revision": "5b7b98dd10200530d0b6870d4213945c"
