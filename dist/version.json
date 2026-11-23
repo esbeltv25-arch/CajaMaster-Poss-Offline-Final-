@@ -1,0 +1,9 @@
+{
+  "version": "1.3.9",
+  "versionCode": 1090,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.3.9.zip",
+  "mandatory": false,
+  "changelog": "Auditoría PDF IPVE: limpieza UTF-8 sin mojibake, eliminación de alertas/notas en documento oficial, alineación estricta y desglose Efectivo vs. Digital",
+  "releaseDate": "2026-11-23",
+  "minNativeVersionCode": 1000
+}
