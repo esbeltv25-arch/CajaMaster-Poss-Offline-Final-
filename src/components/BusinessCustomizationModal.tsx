@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { NumericInput } from "./NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import {
   IconCheck,
@@ -636,17 +637,12 @@ export function BusinessCustomizationModal({
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider block mb-1">
                       Impuesto por Defecto (%)
                     </label>
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       min="0"
                       step="any"
                       value={bizForm.defaultTaxRate !== undefined ? bizForm.defaultTaxRate : ""}
-                      onChange={(e) =>
-                        setBizForm({
-                          ...bizForm,
-                          defaultTaxRate: e.target.value ? parseFloat(e.target.value) : 0,
-                        })
-                      }
+                      onValueChange={(n) => setBizForm({ ...bizForm, defaultTaxRate: n })}
                       placeholder="0 (Opcional)"
                       className="w-full neu-inset rounded-xl px-3.5 h-10 text-xs font-bold outline-none text-slate-900"
                     />
@@ -671,17 +667,12 @@ export function BusinessCustomizationModal({
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider block mb-1">
                       Propina / Cargo por Servicio (%)
                     </label>
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       min="0"
                       step="any"
                       value={bizForm.defaultTipRate !== undefined ? bizForm.defaultTipRate : ""}
-                      onChange={(e) =>
-                        setBizForm({
-                          ...bizForm,
-                          defaultTipRate: e.target.value ? parseFloat(e.target.value) : 0,
-                        })
-                      }
+                      onValueChange={(n) => setBizForm({ ...bizForm, defaultTipRate: n })}
                       placeholder="0 (Opcional)"
                       className="w-full neu-inset rounded-xl px-3.5 h-10 text-xs font-bold outline-none text-slate-900"
                     />

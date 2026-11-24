@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { NumericInput } from "./NumericInput";
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import QRCode from "qrcode";
 import {
@@ -882,10 +883,10 @@ function OtaUpdateModalContent({ onClose, initialTab = "update" }: OtaUpdateModa
                     <label className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
                       Código de Build (ej. 1044):
                     </label>
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       value={builderCode}
-                      onChange={(e) => setBuilderCode(Number(e.target.value))}
+                      onValueChange={(n) => setBuilderCode(n)} integer
                       placeholder="1044"
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 outline-none"
                     />

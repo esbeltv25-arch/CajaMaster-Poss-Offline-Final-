@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, type SyntheticEvent } from "react";
+import { NumericInput } from "../components/NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore, useTicket, actions } from "../store";
 import { TopBar } from "../components/Layout";
@@ -1886,10 +1887,10 @@ function UnifiedTicketAndCheckout({
                 <IconTag size={13} /> Descuento ({payCurrency}):
               </span>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
+                <NumericInput
+                  
                   value={ticket.discount ? roundCurrency(ticket.discount / payRate) : ""}
-                  onChange={(e) => ticket.setDiscount(roundCurrency((parseFloat(e.target.value || "0") || 0) * payRate))}
+                  onValueChange={(n) => ticket.setDiscount(roundCurrency(Math.max(0, n) * payRate))}
                   placeholder="0"
                   className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-white/20 bg-[var(--color-bg)] text-xs font-bold outline-none text-right text-[var(--color-ink)]"
                   autoFocus

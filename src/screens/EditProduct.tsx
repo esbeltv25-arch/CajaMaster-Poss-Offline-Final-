@@ -1,4 +1,5 @@
 import { useState, type ReactNode, useRef, type ChangeEvent } from "react";
+import { NumericInput } from "../components/NumericInput";
 import { actions, useStore } from "../store";
 import { TopBar } from "../components/Layout";
 import {
@@ -390,11 +391,11 @@ export function EditProductScreen({
               <IconMinus size={16} />
             </button>
             <div className="flex items-baseline gap-2">
-              <input
-                type="number"
+              <NumericInput
+                
                 min="0"
                 value={stock}
-                onChange={(e) => setStock(parseInt(e.target.value || "0", 10))}
+                onValueChange={(n) => setStock(n)} integer
                 className="w-24 text-center bg-transparent outline-none font-extrabold text-2xl text-[var(--color-ink)]"
               />
               <span className="text-xs text-slate-500 font-bold">{unit}</span>
@@ -414,12 +415,12 @@ export function EditProductScreen({
           <Field label="PRECIO DE VENTA (CUP) *" hint="Precio público">
             <div className="flex items-center px-4 h-12 gap-1.5">
               <span className="text-slate-400 font-bold text-xs">CUP</span>
-              <input
-                type="number"
+              <NumericInput
+                
                 min="0"
                 step="any"
                 value={price || ""}
-                onChange={(e) => setPrice(parseFloat(e.target.value || "0"))}
+                onValueChange={(n) => setPrice(n)}
                 placeholder="0.00"
                 className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
               />
@@ -429,12 +430,12 @@ export function EditProductScreen({
           <Field label="COSTO DE COMPRA (CUP)" hint="Para balance de ganancias">
             <div className="flex items-center px-4 h-12 gap-1.5">
               <span className="text-slate-400 font-bold text-xs">CUP</span>
-              <input
-                type="number"
+              <NumericInput
+                
                 min="0"
                 step="any"
                 value={cost || ""}
-                onChange={(e) => setCost(parseFloat(e.target.value || "0"))}
+                onValueChange={(n) => setCost(n)}
                 placeholder="0.00"
                 className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
               />
@@ -497,11 +498,11 @@ export function EditProductScreen({
 
         {/* Low Stock Alert Threshold */}
         <Field label="UMBRAL DE ALERTA (STOCK BAJO)">
-          <input
-            type="number"
+          <NumericInput
+            
             min="0"
             value={lowAlert}
-            onChange={(e) => setLowAlert(parseInt(e.target.value || "0", 10))}
+            onValueChange={(n) => setLowAlert(n)} integer
             className="w-full bg-transparent outline-none px-4 h-12 text-[var(--color-ink)] font-bold text-sm"
           />
         </Field>

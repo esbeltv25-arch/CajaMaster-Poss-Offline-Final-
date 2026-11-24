@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { NumericInput } from "./NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import {
   IconPrinter,
@@ -572,10 +573,10 @@ export function PrinterSelectionModal({
                         <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
                           Puerto Raw:
                         </label>
-                        <input
-                          type="number"
+                        <NumericInput
+                          
                           value={newPort}
-                          onChange={(e) => setNewPort(Number(e.target.value))}
+                          onValueChange={(n) => setNewPort(n)} integer
                           placeholder="9100"
                           className="w-full h-9 px-3 rounded-xl border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 outline-none focus:border-emerald-600"
                         />

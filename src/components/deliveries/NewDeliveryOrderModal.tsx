@@ -1,4 +1,5 @@
 import { useState, useMemo, type FormEvent } from "react";
+import { NumericInput } from "../NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import {
   IconX,
@@ -805,10 +806,10 @@ export function NewDeliveryOrderModal({
                       placeholder="Producto personalizado..."
                       className="flex-1 text-xs px-2.5 py-1 rounded-xl border border-slate-200 bg-white"
                     />
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       value={customItemPrice || ""}
-                      onChange={(e) => setCustomItemPrice(parseFloat(e.target.value) || 0)}
+                      onValueChange={(n) => setCustomItemPrice(n)}
                       placeholder="Precio CUP"
                       className="w-20 text-xs px-2.5 py-1 rounded-xl border border-slate-200 bg-white"
                     />
@@ -830,11 +831,11 @@ export function NewDeliveryOrderModal({
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Tarifa de Envío (CUP)
                   </label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    
                     min={0}
                     value={deliveryFee}
-                    onChange={(e) => setDeliveryFee(Math.max(0, parseFloat(e.target.value) || 0))}
+                    onValueChange={(n) => setDeliveryFee(Math.max(0, n))}
                     className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
                   />
                 </div>
@@ -842,11 +843,11 @@ export function NewDeliveryOrderModal({
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Propina (CUP)
                   </label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    
                     min={0}
                     value={tip}
-                    onChange={(e) => setTip(Math.max(0, parseFloat(e.target.value) || 0))}
+                    onValueChange={(n) => setTip(Math.max(0, n))}
                     className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
                   />
                 </div>
@@ -854,11 +855,11 @@ export function NewDeliveryOrderModal({
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Tiempo Estimado (min)
                   </label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    
                     min={5}
                     value={estimatedMinutes}
-                    onChange={(e) => setEstimatedMinutes(Math.max(5, parseInt(e.target.value) || 25))}
+                    onValueChange={(n) => setEstimatedMinutes(Math.max(5, n || 25))} integer emptyValue={25}
                     className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
                   />
                 </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { NumericInput } from "../components/NumericInput";
 import { useStore, actions } from "../store";
 import { useTheme } from "../themeContext";
 import { TopBar } from "../components/Layout";
@@ -598,10 +599,10 @@ export function CierreCajaScreen() {
               </label>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
                 <span className="text-slate-400 font-bold text-xs">CUP</span>
-                <input
-                  type="number"
+                <NumericInput
+                  
                   value={openingCash}
-                  onChange={(e) => setOpeningCash(parseFloat(e.target.value || "0"))}
+                  onValueChange={(n) => setOpeningCash(n)}
                   className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
@@ -910,15 +911,10 @@ export function CierreCajaScreen() {
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-1">
                     <span className="text-[11px] text-slate-500 font-bold">Conteo:</span>
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       value={it.physicalStock}
-                      onChange={(e) =>
-                        handleUpdateCount(
-                          it.productId,
-                          parseInt(e.target.value || "0", 10)
-                        )
-                      }
+                      onValueChange={(n) => handleUpdateCount(it.productId, n)} integer
                       className="w-16 h-9 rounded-xl border border-slate-300 dark:border-white/10 text-center font-extrabold text-sm outline-none bg-slate-50 dark:bg-slate-800 text-[var(--color-ink)]"
                     />
                     <span className="text-xs text-slate-400 font-bold">{it.unit}</span>
