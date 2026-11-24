@@ -330,7 +330,8 @@ export function buildZReportPdfPayload(
   doc.setTextColor(51, 65, 85);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  if (biz.owner) doc.text(`Responsable: ${cleanCorruptCharacters(biz.owner)}`, 40, y);
+  const zResponsible = closing.cashier || biz.owner;
+  if (zResponsible) doc.text(`Responsable: ${cleanCorruptCharacters(zResponsible)}`, 40, y);
   if (biz.phone) doc.text(`Tel: ${cleanCorruptCharacters(biz.phone)}`, 240, y);
   if (biz.address) doc.text(`Dirección: ${cleanCorruptCharacters(biz.address)}`, 400, y);
   y += 18;
@@ -514,6 +515,11 @@ export function buildZReportPdfPayload(
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text("Cajero / Responsable de Turno", 140, y + 12, { align: "center" });
+  if (closing.cashier) {
+    doc.setFont("helvetica", "normal");
+    doc.text(cleanCorruptCharacters(closing.cashier), 140, y - 4, { align: "center" });
+    doc.setFont("helvetica", "bold");
+  }
   doc.text("Administrador / Auditor", 455, y + 12, { align: "center" });
 
   doc.setFont("helvetica", "normal");

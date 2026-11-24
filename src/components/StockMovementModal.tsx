@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { currentUserName } from "../services/userSession";
 import type { Product, MovementType } from "../types";
 import { actions } from "../store";
 import {
@@ -61,7 +62,7 @@ export const StockMovementModal: React.FC<StockMovementModalProps> = ({
   const [reason, setReason] = useState<string>("");
   const [customReason, setCustomReason] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-  const [user, setUser] = useState<string>("Administrador");
+  const [user, setUser] = useState<string>(() => currentUserName("Administrador"));
   const [unitCost, setUnitCost] = useState<string>("");
 
   if (!isOpen) return null;

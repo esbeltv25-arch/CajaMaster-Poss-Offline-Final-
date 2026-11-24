@@ -86,6 +86,7 @@ import type { BusinessInfo } from "../types";
 import { clearNativeAppCache } from "../utils/nativeBridge";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { ExchangeRatesCard } from "../components/ExchangeRatesCard";
+import { UsersCard } from "../components/UsersCard";
 
 export function AjustesScreen({
   deviceId,
@@ -913,6 +914,9 @@ export function AjustesScreen({
             </div>
           </div>
         </div>
+
+        {/* Users & shifts (who is selling) */}
+        <UsersCard />
 
         {/* Currency & Exchange Rates Section (manual or elTOQUE) */}
         <ExchangeRatesCard />

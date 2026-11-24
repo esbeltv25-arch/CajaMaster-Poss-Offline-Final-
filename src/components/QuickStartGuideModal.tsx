@@ -438,7 +438,7 @@ function GuideTabsSlider({
         {/* Scrollable Tabs Box */}
         <div
           ref={containerRef}
-          className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x py-0.5 px-0.5"
+          className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
         >
           {tabs.map((tab) => {
             const isActive = activeSection === tab.id;

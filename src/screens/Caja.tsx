@@ -582,7 +582,7 @@ export function CajaScreen({
           </div>
 
           {/* Product Items: Horizontal Shelves, Responsive Grid or Fast List Mode */}
-          <div className="flex-1 overflow-y-auto pr-0.5 pb-2 pt-0.5 min-h-0">
+          <div className="flex-1 overflow-y-auto pr-0.5 pb-28 pt-0.5 min-h-0">
             {viewMode === "shelves" ? (
               /* HORIZONTAL SCROLLING SHELVES BY CATEGORY */
               <div className="space-y-3 pb-2">
@@ -616,7 +616,7 @@ export function CajaScreen({
                           </div>
 
                           {/* Horizontal Scrolling Container (overflow-x-auto flex-nowrap) */}
-                          <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-1 px-0.5 no-scrollbar touch-pan-x overscroll-x-contain">
+                          <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-1 px-0.5 no-scrollbar overscroll-x-contain">
                             {catProds.map((p) => {
                               const isOutOfStock = p.stock <= 0;
                               const isLow = p.stock <= p.lowStockAlert && !isOutOfStock;
@@ -736,7 +736,7 @@ export function CajaScreen({
                     </div>
 
                     {/* Horizontal scroll shelf */}
-                    <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-2 px-0.5 no-scrollbar touch-pan-x overscroll-x-contain">
+                    <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-2 px-0.5 no-scrollbar overscroll-x-contain">
                       {filteredProducts.map((p) => {
                         const isOutOfStock = p.stock <= 0;
                         const isLow = p.stock <= p.lowStockAlert && !isOutOfStock;

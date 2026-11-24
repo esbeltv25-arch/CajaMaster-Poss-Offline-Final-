@@ -270,6 +270,11 @@ export function ReceiptModal({
             <div className="text-[10px] text-slate-500 font-sans pt-1 font-semibold">
               Ticket #{sale.ticketNumber || String(sale.id).slice(-4)} • {formattedDate}
             </div>
+            {(sale as any).sellerName && (
+              <p className="text-[10.5px] text-slate-500 font-semibold mt-0.5" id="receipt-seller">
+                Atendido por: {(sale as any).sellerName}
+              </p>
+            )}
           </div>
 
           {/* Items Table */}

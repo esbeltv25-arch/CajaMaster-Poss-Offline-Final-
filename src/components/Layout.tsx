@@ -19,6 +19,7 @@ import {
   IconChevronRight,
 } from "./Icons";
 import { useTheme } from "../themeContext";
+import { useUserSession, endShift } from "../services/userSession";
 import { useStore, actions } from "../store";
 import { ConnectivityModal } from "./ConnectivityModal";
 import { BackupModal } from "./BackupModal";
@@ -192,6 +193,7 @@ export function TopBar({
 }) {
   const { theme, setIsThemePickerOpen } = useTheme();
   const state = useStore();
+  const userSession = useUserSession();
   const [showConnectivity, setShowConnectivity] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -243,6 +245,24 @@ export function TopBar({
         {/* Action Bar: Unified, strictly contained within the mobile frame with ZERO horizontal overflow */}
         <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-1.5 shrink-0 max-w-full ml-auto">
           {right}
+
+          {/* Active shift: who is working now */}
+          {userSession.session && (
+            <button
+              type="button"
+              id="btn-shift-user"
+              onClick={() => {
+                if (window.confirm(`Turno de ${userSession.session!.userName}. ¿Cambiar de usuario?`)) endShift();
+              }}
+              className="h-7 sm:h-8 px-2 rounded-xl neu-sm flex items-center gap-1 text-[10px] sm:text-[11px] font-extrabold text-[var(--color-ink)] cursor-pointer shrink-0 max-w-[110px]"
+              title="Usuario del turno (pulsa para cambiar)"
+            >
+              <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-[9px] font-black shrink-0">
+                {userSession.session.userName.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="truncate">{userSession.session.userName}</span>
+            </button>
+          )}
 
           {/* Active Alerts Bell (always visible if there are alerts, or on larger screens) */}
           {(lowStockCount > 0 || !isOffline) && (

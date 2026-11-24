@@ -1,9 +1,9 @@
 {
-  "version": "1.4.0",
-  "versionCode": 1100,
-  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.0.zip",
+  "version": "1.4.1",
+  "versionCode": 1110,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.1.zip",
   "mandatory": false,
-  "changelog": "Vinculación QR y sincronización corregidas, actualizaciones OTA, licencias con firma digital, cobro en efectivo y cambio correctos, moneda seleccionada en toda la app, cierre por moneda y tasas de elTOQUE.",
+  "changelog": "Usuarios y turnos con PIN (ventas y cierre Z a nombre del vendedor, cierre por turno), scroll de productos en Caja corregido y borrado de pedidos de envío.",
   "releaseDate": "2026-11-25",
   "minNativeVersionCode": 1000
 }

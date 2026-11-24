@@ -19,7 +19,9 @@ import {
   IconChevronLeft,
   IconGrid,
   IconList,
+  IconTrash,
 } from "../Icons";
+import { ConfirmationModal } from "../ConfirmationModal";
 import { useStore, actions } from "../../store";
 import { formatCurrency } from "../../utils/currency";
 import type { DeliveryOrder, DeliveryStatus } from "../../types";
@@ -48,6 +50,8 @@ export function DeliveryOrdersTab({
   const state = useStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ACTIVE");
+  const [orderToDelete, setOrderToDelete] = useState<DeliveryOrder | null>(null);
+  const [confirmClearFinished, setConfirmClearFinished] = useState(false);
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
   // Filter slider & scroll management
@@ -353,7 +357,7 @@ export function DeliveryOrdersTab({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onScroll={updateScrollState}
-          className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none touch-pan-x scroll-smooth cursor-grab active:cursor-grabbing"
+          className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth cursor-grab active:cursor-grabbing"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {STATUS_FILTERS.map((f) => {
@@ -469,6 +473,52 @@ export function DeliveryOrdersTab({
       </div>
 
       {/* Orders View: TABLERO (Grid de Tarjetas) vs LISTA (Tabla / Filas Detalladas) */}
+      {/* Clean up finished orders */}
+      {deliveries.some((o) => o.status === "ENTREGADO" || o.status === "CANCELADO") && (
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            id="btn-clear-finished-deliveries"
+            onClick={() => setConfirmClearFinished(true)}
+            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+          >
+            <IconTrash size={13} />
+            Limpiar entregados y cancelados (
+            {deliveries.filter((o) => o.status === "ENTREGADO" || o.status === "CANCELADO").length})
+          </button>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={confirmClearFinished}
+        title="¿Limpiar pedidos finalizados?"
+        message="Se eliminarán definitivamente todos los pedidos entregados y cancelados. Los pedidos activos no se tocan."
+        confirmText="Sí, limpiar"
+        cancelText="Cancelar"
+        danger
+        icon="alert"
+        onConfirm={() => {
+          actions.deleteFinishedDeliveries();
+          setConfirmClearFinished(false);
+        }}
+        onClose={() => setConfirmClearFinished(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={Boolean(orderToDelete)}
+        title="¿Eliminar pedido?"
+        message={orderToDelete ? `Se eliminará definitivamente el pedido #${orderToDelete.orderNumber} de ${orderToDelete.customerName}.` : ""}
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        danger
+        icon="alert"
+        onConfirm={() => {
+          if (orderToDelete) actions.deleteDeliveryOrder(orderToDelete.id);
+          setOrderToDelete(null);
+        }}
+        onClose={() => setOrderToDelete(null)}
+      />
+
       {filteredOrders.length > 0 ? (
         viewMode === "board" ? (
           /* ==================== VISTA 1: TABLERO DE TARJETAS ==================== */
@@ -503,6 +553,18 @@ export function DeliveryOrdersTab({
                         <span className="font-black text-sm text-slate-900">
                           #{order.orderNumber}
                         </span>
+                        <button
+                          type="button"
+                          aria-label="Eliminar pedido"
+                          title="Eliminar pedido"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToDelete(order);
+                          }}
+                          className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer transition"
+                        >
+                          <IconTrash size={12} />
+                        </button>
                         <span className="text-[10px] text-slate-400 font-bold">
                           {new Date(order.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -709,6 +771,18 @@ export function DeliveryOrdersTab({
                             <span className="text-sm font-black text-slate-900">
                               #{order.orderNumber}
                             </span>
+                            <button
+                              type="button"
+                              aria-label="Eliminar pedido"
+                              title="Eliminar pedido"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOrderToDelete(order);
+                              }}
+                              className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer transition"
+                            >
+                              <IconTrash size={12} />
+                            </button>
                           </div>
                           <span className="text-[10px] text-slate-400 font-bold block">
                             {new Date(order.createdAt).toLocaleTimeString([], {

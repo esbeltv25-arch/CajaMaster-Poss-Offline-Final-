@@ -27,6 +27,7 @@ import type {
 import { DEFAULT_RATES, roundCurrency } from "./utils/currency";
 import { checkAndNotifyStockBreaches } from "./utils/notifications";
 import { syncService } from "./services/multiDeviceSync";
+import { getSession, currentUserName } from "./services/userSession";
 import { saveToInternalOrDownload } from "./utils/fileStorage";
 
 const STORAGE_KEY = "cajamaster_state_v3";
@@ -717,7 +718,7 @@ export const actions = {
         resultingStock: p.stock,
         unitCost: p.cost,
         totalCost: p.cost * p.stock,
-        user: "Administrador",
+        user: currentUserName("Administrador"),
         reason: "Alta inicial de producto",
         notes: "Inventario inicial al registrar el producto en catálogo",
       };
@@ -744,7 +745,7 @@ export const actions = {
           resultingStock: p.stock,
           unitCost: p.cost,
           totalCost: p.cost * Math.abs(diff),
-          user: "Administrador",
+          user: currentUserName("Administrador"),
           reason: diff > 0 ? "Reabastecimiento / Edición de catálogo" : "Ajuste directo de existencias",
           notes: `Modificación directa de catálogo (${prev.stock} -> ${p.stock} ${p.unit})`,
         };
@@ -768,7 +769,7 @@ export const actions = {
     productId: string,
     newStock: number,
     reason = "Ajuste manual",
-    user = "Cajero",
+    user = currentUserName("Cajero"),
     customType?: MovementType
   ) {
     const p = _state.products.find((x) => x.id === productId);
@@ -822,7 +823,7 @@ export const actions = {
     user?: string;
     unitCost?: number;
   }) {
-    const { productId, type, qty, reason, notes, user = "Cajero", unitCost } = params;
+    const { productId, type, qty, reason, notes, user = currentUserName("Cajero"), unitCost } = params;
     const p = _state.products.find((x) => x.id === productId);
     if (!p || qty <= 0) return;
 
@@ -1179,6 +1180,9 @@ export const actions = {
       currency,
       // CUP per 1 unit of the currency used at checkout (1 for CUP)
       exchangeRate: currency === "CUP" ? 1 : exchangeRate,
+      // Who sold it (active shift), when users are configured
+      sellerId: getSession()?.userId,
+      sellerName: getSession()?.userName,
       notes,
     };
 
@@ -1203,7 +1207,7 @@ export const actions = {
           resultingStock: nextStock,
           unitCost: p.cost,
           totalCost: p.cost * it.qty,
-          user: "Cajero",
+          user: sale.sellerName || "Cajero",
           saleId: sale.id,
           ticketNumber: sale.ticketNumber,
           reason: `Venta Ticket #${sale.ticketNumber}`,
@@ -1324,6 +1328,7 @@ export const actions = {
         cost: roundCurrency(c.cost),
         price: roundCurrency(c.price),
       })),
+      cashier: closing.cashier || getSession()?.userName || undefined,
       id: "closing_" + Date.now(),
       closedAt: Date.now(),
     };
@@ -1802,6 +1807,18 @@ export const actions = {
       ),
     };
     emit();
+  },
+
+  /** Removes every delivered or cancelled order. Returns how many were removed. */
+  deleteFinishedDeliveries(): number {
+    const current = _state.deliveries || [];
+    const kept = current.filter((o) => o.status !== "ENTREGADO" && o.status !== "CANCELADO");
+    const removed = current.length - kept.length;
+    if (removed > 0) {
+      _state = { ..._state, deliveries: kept };
+      emit();
+    }
+    return removed;
   },
 
   deleteDeliveryOrder(id: string) {

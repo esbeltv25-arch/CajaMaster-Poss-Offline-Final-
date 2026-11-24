@@ -24,6 +24,8 @@ import {
 import type { Product } from "./types";
 import { actions, getStoreRates } from "./store";
 import { updateRatesFromElToque } from "./services/eltoqueRates";
+import { useUserSession } from "./services/userSession";
+import { ShiftLockScreen } from "./components/ShiftLockScreen";
 
 type View =
   | { kind: "tab"; tab: Tab }
@@ -36,6 +38,7 @@ function AppContent() {
   const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [quickGuideSection, setQuickGuideSection] = useState<GuideSection>("wizard");
   const [otaAvailable, setOtaAvailable] = useState<RemoteVersionInfo | null>(null);
+  const userSession = useUserSession();
   const [otaDismissed, setOtaDismissed] = useState(false);
   const [otaBusy, setOtaBusy] = useState(false);
   const [otaStatus, setOtaStatus] = useState<string>("");
@@ -102,6 +105,13 @@ function AppContent() {
         onActivated={() => setActivated(true)}
       />
     );
+  }
+
+  // Users configured and nobody on shift: ask who is working
+  const activeShift =
+    userSession.session && userSession.users.some((u) => u.id === userSession.session!.userId);
+  if (userSession.users.length > 0 && !activeShift) {
+    return <ShiftLockScreen />;
   }
 
   function logout() {

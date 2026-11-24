@@ -76,6 +76,9 @@ export type Sale = {
   change?: number;
   currency: CurrencyCode;
   /** CUP per 1 unit of `currency` at the time of the sale (1 for CUP). */
+  /** Usuario (vendedor) que registró la venta, si hay usuarios configurados. */
+  sellerId?: string;
+  sellerName?: string;
   exchangeRate?: number;
   notes?: string;
 };
