@@ -1,5 +1,6 @@
 // Browser entry of Generador_CajaMaster_POS.html (bundled by scripts/build-license-generator.mjs).
 import {
+  generateKeyPair,
   createLicense,
   verifyLicenseWithKey,
   publicKeyFromPrivate,
@@ -58,7 +59,7 @@ function renderKeyState() {
   gen.hidden = false;
   $("key-pub").textContent = pub;
   $("key-warn").textContent = !__APP_PUBLIC_KEY__
-    ? "⚠️ Este generador se creó cuando la app aún no tenía clave pública. Vuelve a generarlo tras «npm run license:keygen»."
+    ? "👉 Paso siguiente: copia tu CLAVE PÚBLICA (botón de abajo) y envíasela a quien compila la app para que la incluya. Hasta entonces la app no acepta licencias."
     : match
       ? ""
       : "❌ Esta clave privada NO corresponde a la clave pública de la app: las licencias no funcionarán.";
@@ -141,7 +142,49 @@ function exportCsv() {
   a.click();
 }
 
+function downloadPrivateKey(privateKeyHex: string, publicKeyHex: string) {
+  const json = JSON.stringify(
+    { app: "CajaMaster POS", privateKeyHex, publicKeyHex, createdAt: new Date().toISOString() },
+    null,
+    2
+  );
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  a.download = "private-key.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function init() {
+  $("key-create").addEventListener("click", () => {
+    if (
+      !confirm(
+        "Vas a crear tus claves de licencias.\n\n" +
+          "Hazlo UNA SOLA VEZ: si más adelante creas otras, las licencias ya vendidas dejarán de servir.\n\n¿Continuar?"
+      )
+    )
+      return;
+    const { privateKeyHex, publicKeyHex } = generateKeyPair();
+    localStorage.setItem(PK_STORAGE, privateKeyHex);
+    downloadPrivateKey(privateKeyHex, publicKeyHex);
+    alert(
+      "✅ Claves creadas.\n\n" +
+        "Se ha descargado el archivo «private-key.json»: es tu CLAVE PRIVADA. Guárdalo en un lugar seguro " +
+        "(por ejemplo un USB) y no se lo envíes a nadie.\n\n" +
+        "Ahora copia tu CLAVE PÚBLICA con el botón «Copiar clave pública»."
+    );
+    renderKeyState();
+  });
+  $("key-download").addEventListener("click", () => {
+    const k = getKey();
+    if (k) downloadPrivateKey(k, publicKeyFromPrivate(k));
+  });
+  $("pub-copy").addEventListener("click", () => {
+    navigator.clipboard.writeText($("key-pub").textContent || "");
+    $("pub-copy").textContent = "¡Copiada!";
+    setTimeout(() => ($("pub-copy").textContent = "Copiar clave pública"), 1500);
+  });
   $("key-save").addEventListener("click", () => {
     const k = parsePrivateKey(($("key-input") as HTMLTextAreaElement).value);
     if (!k) {

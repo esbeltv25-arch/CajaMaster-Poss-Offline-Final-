@@ -63,7 +63,11 @@ const html = `<!doctype html>
   <p class="sub">Solo para el propietario. Funciona sin internet. Cada licencia queda firmada para un único dispositivo.</p>
 
   <section class="card" id="key-setup" hidden>
-    <h2>1. Carga tu clave privada</h2>
+    <h2>¿Primera vez? Crea tus claves</h2>
+    <p class="muted">Solo una vez. Se crea tu clave privada (se descarga como <span class="mono">private-key.json</span>) y tu clave pública, que deberás enviar para incluirla en la app.</p>
+    <div class="row"><button class="primary" id="key-create">Crear mis claves</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:18px 0" />
+    <h2>¿Ya tienes tus claves? Cárgalas</h2>
     <p class="muted">Abre el archivo <span class="mono">.license/private-key.json</span> (creado con <span class="mono">npm run license:keygen</span>) o pega su contenido. Se guarda solo en este navegador.</p>
     <label for="key-file">Archivo</label><input type="file" id="key-file" accept=".json,.txt" />
     <label for="key-input">o pega el contenido</label><textarea id="key-input" placeholder='{"privateKeyHex": "..."}'></textarea>
@@ -72,7 +76,8 @@ const html = `<!doctype html>
 
   <section class="card" id="key-ok" hidden>
     <h2>Clave cargada ✅</h2>
-    <div class="muted">Clave pública derivada:</div><div class="mono muted" id="key-pub"></div>
+    <div class="muted">Tu clave pública (se puede compartir sin peligro):</div><div class="mono" id="key-pub"></div>
+    <div class="row"><button class="primary" id="pub-copy">Copiar clave pública</button><button class="ghost" id="key-download">Volver a descargar private-key.json</button></div>
     <div class="muted" style="margin-top:6px">Clave pública de la app:</div><div class="mono muted" id="app-pub"></div>
     <p class="warn" id="key-warn"></p>
     <div class="row"><button class="ghost" id="key-forget">Olvidar clave en este navegador</button></div>

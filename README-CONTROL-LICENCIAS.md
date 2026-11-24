@@ -17,6 +17,10 @@ Cada licencia va firmada para **un único dispositivo**: copiarla en otro teléf
 
 ## 1. Configuración inicial (una sola vez)
 
+**Opción fácil, sin instalar nada:** abre `Generador_CajaMaster_POS.html` en el navegador y pulsa **Crear mis claves**. Se descarga `private-key.json` (tu clave privada: guárdala bien) y se muestra tu clave pública. Copia esa clave pública en `src/utils/licensePublicKey.ts`, o pídeselo a quien compile la app, y vuelve a compilar.
+
+**Opción con terminal:**
+
 ```bash
 npm install
 npm run license:keygen
