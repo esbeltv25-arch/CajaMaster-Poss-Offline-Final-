@@ -107,6 +107,7 @@ class MultiDeviceSyncService {
     remoteSale: new Set<EventCallback<{ sale: Sale; senderName: string }>>(),
     remoteStock: new Set<EventCallback<{ productId: string; stock: number; senderName: string }>>(),
     remoteProduct: new Set<EventCallback<{ product: Product; senderName: string }>>(),
+    remoteProductDelete: new Set<EventCallback<{ productId: string; senderName: string }>>(),
     remoteCategories: new Set<EventCallback<{ categories: Category[]; senderName: string }>>(),
     remoteSnapshot: new Set<EventCallback<{ state: AppState; senderName: string }>>(),
     stateRequested: new Set<EventCallback<{ requesterId: string; requesterName: string }>>(),
@@ -929,6 +930,10 @@ class MultiDeviceSyncService {
 
       case "state:init":
       case "state:snapshot": {
+        // The full state only flows Caja Central -> terminals. A terminal that
+        // resets or restores a backup must not overwrite the Caja Central.
+        if (this.config.role === "primary") break;
+        if (senderRole && senderRole !== "primary") break;
         if (msg.state) {
           this.listeners.remoteSnapshot.forEach((cb) =>
             cb({ state: msg.state, senderName: senderName || "Terminal Central" })
@@ -991,6 +996,15 @@ class MultiDeviceSyncService {
         if (msg.product) {
           this.listeners.remoteProduct.forEach((cb) =>
             cb({ product: msg.product, senderName: senderName || "Terminal" })
+          );
+        }
+        break;
+      }
+
+      case "product:delete": {
+        if (msg.productId) {
+          this.listeners.remoteProductDelete.forEach((cb) =>
+            cb({ productId: msg.productId, senderName: senderName || "Terminal" })
           );
         }
         break;
@@ -1093,6 +1107,13 @@ class MultiDeviceSyncService {
     });
   }
 
+  public broadcastProductDelete(productId: string) {
+    this.broadcastToAll({
+      type: "product:delete",
+      productId,
+    });
+  }
+
   public broadcastCategoriesUpdate(categories: Category[]) {
     this.broadcastToAll({
       type: "category:update",
@@ -1163,6 +1184,11 @@ class MultiDeviceSyncService {
   public onRemoteProduct(cb: EventCallback<{ product: Product; senderName: string }>): () => void {
     this.listeners.remoteProduct.add(cb);
     return () => this.listeners.remoteProduct.delete(cb);
+  }
+
+  public onRemoteProductDelete(cb: EventCallback<{ productId: string; senderName: string }>): () => void {
+    this.listeners.remoteProductDelete.add(cb);
+    return () => this.listeners.remoteProductDelete.delete(cb);
   }
 
   public onRemoteCategories(cb: EventCallback<{ categories: Category[]; senderName: string }>): () => void {

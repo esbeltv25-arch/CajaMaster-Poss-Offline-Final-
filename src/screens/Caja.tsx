@@ -22,7 +22,7 @@ import {
   IconAlert,
   IconBolt,
 } from "../components/Icons";
-import { formatCurrency } from "../utils/currency";
+import { formatCurrency, roundCurrency } from "../utils/currency";
 import { ReceiptModal } from "../components/ReceiptModal";
 import { CategorySlider } from "../components/CategorySlider";
 import { useTheme } from "../themeContext";
@@ -243,7 +243,12 @@ export function CajaScreen({
           ? (customCash !== undefined
               ? customCash
               : (typeof cashPaid === "number" && cashPaid > 0 ? cashPaid : ticket.total))
-          : undefined;
+          : method === "mixed"
+            ? // Mixed: cashPaid is the part paid in cash; the rest is digital
+              (customCash !== undefined
+                ? customCash
+                : (typeof cashPaid === "number" && cashPaid > 0 ? Math.min(cashPaid, ticket.total) : undefined))
+            : undefined;
 
       const finalChange =
         method === "cash" && finalCash && finalCash > totalCUP
@@ -1743,9 +1748,9 @@ function UnifiedTicketAndCheckout({
                   >
                     {/* Item Thumbnail */}
                     <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
-                      {item.image ? (
+                      {(prod?.image || item.image) ? (
                         <img
-                          src={item.image}
+                          src={prod?.image || item.image}
                           alt={item.name}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
@@ -1965,6 +1970,35 @@ function UnifiedTicketAndCheckout({
             </button>
           </div>
         </div>
+
+        {/* Mixed payment: how much was paid in cash (rest = transfer) */}
+        {paymentMethod === "mixed" && (
+          <div className="bg-[var(--color-card-bg)] rounded-2xl p-3 border border-black/10 dark:border-white/10 space-y-1.5">
+            <label className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              PARTE PAGADA EN EFECTIVO (CUP)
+            </label>
+            <div className="neu-inset rounded-xl px-3 h-10 flex items-center gap-2 bg-transparent">
+              <span className="text-slate-400 font-bold text-sm">$</span>
+              <input
+                id="input-mixed-cash"
+                type="number"
+                min={0}
+                max={ticket.total}
+                value={cashPaid}
+                onChange={(e) =>
+                  setCashPaid(e.target.value === "" ? "" : parseFloat(e.target.value))
+                }
+                placeholder="0"
+                className="flex-1 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
+              />
+            </div>
+            <p className="text-[11px] font-semibold text-slate-500">
+              {typeof cashPaid === "number" && cashPaid > 0 && cashPaid < ticket.total
+                ? `Efectivo: $${roundCurrency(cashPaid)} · Transferencia: $${roundCurrency(ticket.total - cashPaid)}`
+                : "Indica cuánto se pagó en efectivo; el resto se registrará como transferencia."}
+            </p>
+          </div>
+        )}
 
         {/* Cash Given & Quick Bills Buttons */}
         {paymentMethod === "cash" && (

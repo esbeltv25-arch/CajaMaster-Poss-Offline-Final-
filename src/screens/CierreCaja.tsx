@@ -24,6 +24,13 @@ import {
   IconScale,
 } from "../components/Icons";
 import { formatCurrency, roundCurrency } from "../utils/currency";
+
+/** Cash portion of a sale. Same rule as the IPVE report (Reportes.tsx). */
+function mixedCashPart(s: { paymentMethod: string; total: number; cashPaid?: number }): number {
+  const total = Number(s.total) || 0;
+  if (s.paymentMethod !== "mixed") return total;
+  return typeof s.cashPaid === "number" && s.cashPaid > 0 && s.cashPaid < total ? s.cashPaid : total;
+}
 import type { DailyClosing, PhysicalCountItem, BusinessInfo, ExchangeRates, PrinterDevice } from "../types";
 import { generateZReportPdf, buildZReportPdfPayload } from "../utils/pdfExport";
 import {
@@ -162,11 +169,12 @@ export function CierreCajaScreen() {
   const [storagePayload, setStoragePayload] = useState<FileExportPayload | null>(null);
 
   // Today's Sales Calculation
-  const startOfDay = useMemo(() => {
+  // Recomputed on every render: a POS left open past midnight must switch day
+  const startOfDay = (() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     return now.getTime();
-  }, []);
+  })();
 
   const todaySales = useMemo(() => {
     return state.sales.filter(
@@ -181,7 +189,7 @@ export function CierreCajaScreen() {
     return roundCurrency(
       todaySales
         .filter((s) => s.paymentMethod === "cash" || s.paymentMethod === "mixed")
-        .reduce((a, b) => a + (b.total || 0), 0)
+        .reduce((a, b) => a + mixedCashPart(b), 0)
     );
   }, [todaySales]);
 
@@ -192,9 +200,10 @@ export function CierreCajaScreen() {
           (s) =>
             s.paymentMethod === "transfer" ||
             s.paymentMethod === "transfermovil" ||
-            s.paymentMethod === "enzona"
+            s.paymentMethod === "enzona" ||
+            s.paymentMethod === "mixed"
         )
-        .reduce((a, b) => a + (b.total || 0), 0)
+        .reduce((a, b) => a + (b.paymentMethod === "mixed" ? (b.total || 0) - mixedCashPart(b) : b.total || 0), 0)
     );
   }, [todaySales]);
 

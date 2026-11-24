@@ -159,7 +159,8 @@ public class SyncRelayServer extends WebSocketServer {
 
                 case "state:snapshot": {
                     ClientSession s = socketToSession.get(conn);
-                    if (s != null) {
+                    // Only the Caja Central (primary) may publish the full state
+                    if (s != null && "primary".equals(s.role)) {
                         String roomKey = msg.optString("roomKey", s.roomKey);
                         JSONObject stateObj = msg.optJSONObject("state");
                         if (stateObj != null && !roomKey.isEmpty()) {
@@ -190,7 +191,9 @@ public class SyncRelayServer extends WebSocketServer {
                 case "sale:new":
                 case "stock:update":
                 case "account:update":
+                case "account:delete":
                 case "product:update":
+                case "product:delete":
                 case "category:update": {
                     ClientSession s = socketToSession.get(conn);
                     if (s != null) {

@@ -370,11 +370,19 @@ function buildCleanState(businessType: "gastronomia" | "retail" | "servicios" | 
       },
     ],
     activeAccountId: "acc_1",
-    deliveries: DEFAULT_DELIVERIES,
-    drivers: DEFAULT_DRIVERS,
+    // No demo orders/drivers in a real business: they inflated counters and reports
+    deliveries: [],
+    drivers: [],
     deliveryAgencies: DEFAULT_AGENCIES,
-    deliverySequence: 104,
+    deliverySequence: 100,
   };
+}
+
+/** Sales must never carry base64 pictures: they multiplied the saved data size. */
+function stripSaleImages(sale: Sale): Sale {
+  if (!sale || !Array.isArray(sale.items)) return sale;
+  if (!sale.items.some((it) => (it as SaleItem).image)) return sale;
+  return { ...sale, items: sale.items.map(({ image: _img, ...it }) => it) };
 }
 
 function loadState(): AppState {
@@ -441,13 +449,16 @@ function loadState(): AppState {
         });
 
         // Delivery state recovery/defaults
-        const deliveries: DeliveryOrder[] = Array.isArray(parsed.deliveries)
-          ? parsed.deliveries
-          : DEFAULT_DELIVERIES;
-        const drivers: DeliveryDriver[] = Array.isArray(parsed.drivers) && parsed.drivers.length > 0
-          ? parsed.drivers
-          : DEFAULT_DRIVERS;
-        const deliveryAgencies: DeliveryAgency[] = Array.isArray(parsed.deliveryAgencies) && parsed.deliveryAgencies.length > 0
+        const DEMO_DELIVERY_IDS = new Set(DEFAULT_DELIVERIES.map((d) => d.id));
+        const DEMO_DRIVER_IDS = new Set(DEFAULT_DRIVERS.map((d) => d.id));
+        const deliveries: DeliveryOrder[] = (Array.isArray(parsed.deliveries) ? parsed.deliveries : []).filter(
+          (d: DeliveryOrder) => !DEMO_DELIVERY_IDS.has(d.id)
+        );
+        const driversInUse = new Set(deliveries.map((d: any) => d.driverId).filter(Boolean));
+        const drivers: DeliveryDriver[] = (Array.isArray(parsed.drivers) ? parsed.drivers : []).filter(
+          (d: DeliveryDriver) => !DEMO_DRIVER_IDS.has(d.id) || driversInUse.has(d.id)
+        );
+        const deliveryAgencies: DeliveryAgency[] = Array.isArray(parsed.deliveryAgencies)
           ? parsed.deliveryAgencies
           : DEFAULT_AGENCIES;
         const deliverySequence = typeof parsed.deliverySequence === "number"
@@ -470,10 +481,13 @@ function loadState(): AppState {
           ...parsed,
           categories,
           products: loadedProducts,
-          sales: Array.isArray(parsed.sales) ? parsed.sales : [],
+          sales: Array.isArray(parsed.sales) ? parsed.sales.map(stripSaleImages) : [],
           movements: enrichedMovements,
           closings: Array.isArray(parsed.closings) ? parsed.closings : [],
-          openAccounts: accounts,
+          openAccounts: accounts.map((a: OpenAccount) => ({
+            ...a,
+            items: Array.isArray(a.items) ? a.items.map(({ image: _img, ...it }: SaleItem) => it) : [],
+          })),
           activeAccountId: activeId,
           rates: { ...DEFAULT_RATES, ...(parsed.rates || {}) },
           business: mergedBusiness,
@@ -495,11 +509,26 @@ function loadState(): AppState {
 let _state: AppState = loadState();
 const listeners = new Set<() => void>();
 
+let storageWarningShown = false;
+
 function emit() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
   } catch (err) {
     console.error("Error saving state to localStorage:", err);
+    // Storage full: data would be lost on restart. Tell the user once per session.
+    if (!storageWarningShown && typeof window !== "undefined") {
+      storageWarningShown = true;
+      setTimeout(() => {
+        try {
+          window.alert(
+            "⚠️ ALMACENAMIENTO LLENO: los últimos cambios NO se están guardando.\n\n" +
+              "Haz ahora una copia de seguridad (Ajustes → Copia de seguridad) y luego reduce datos: " +
+              "quita fotos de productos o archiva/borra ventas antiguas tras un cierre."
+          );
+        } catch {}
+      }, 0);
+    }
   }
   listeners.forEach((l) => l());
 }
@@ -722,7 +751,7 @@ export const actions = {
       products: _state.products.filter((p) => p.id !== id),
     };
     emit();
-    syncService.broadcastStockUpdate(id, 0);
+    syncService.broadcastProductDelete(id);
   },
 
   adjustStock(
@@ -940,7 +969,6 @@ export const actions = {
             productId: p.id,
             name: p.name,
             emoji: p.emoji,
-            image: p.image,
             unit: p.unit,
             price: p.price,
             cost: p.cost,
@@ -1116,10 +1144,11 @@ export const actions = {
       params.syncStatus || (isOnline ? "synced" : "pending_sync");
 
     const sale: Sale = {
-      id: "s_" + Date.now(),
+      // Random suffix: two synced devices selling in the same millisecond must not collide
+      id: "s_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
       ticketNumber: _state.ticketSequence,
       ts: Date.now(),
-      items: items.map((it) => ({
+      items: items.map(({ image: _img, ...it }) => ({
         ...it,
         price: roundCurrency(it.price),
         cost: roundCurrency(it.cost),
@@ -1201,6 +1230,15 @@ export const actions = {
     emit();
     checkAndNotifyStockBreaches(prevProducts, updatedProducts);
     syncService.broadcastNewSale(sale);
+    // Close the charged table/account on the other devices too
+    if (activeId) {
+      if (accounts.length > 1) {
+        syncService.broadcastAccountDelete(activeId);
+      } else {
+        const resetAcc = nextAccounts.find((a) => a.id === activeId);
+        if (resetAcc) syncService.broadcastAccountUpdate(resetAcc, "updated");
+      }
+    }
     return sale;
   },
 
@@ -1360,9 +1398,32 @@ export const actions = {
 
   // Backup & Restore
   restoreBackup(data: AppState) {
+    // Merge over a clean state so backups from older versions (missing lists)
+    // never leave undefined arrays that would crash the screens.
+    const base = buildCleanState();
+    const d: any = data || {};
+    const arr = (v: any, fallback: any[]) => (Array.isArray(v) ? v : fallback);
+    const { _app, _version, _exportedAt, _totalProducts, _totalSales, _totalClosings, ...clean } = d;
+    const accounts = arr(clean.openAccounts, base.openAccounts);
+    const safeAccounts = accounts.length > 0 ? accounts : base.openAccounts;
     _state = {
-      ...data,
-      rates: { ...DEFAULT_RATES, ...(data.rates || {}) },
+      ...base,
+      ...clean,
+      products: arr(clean.products, []),
+      categories: arr(clean.categories, base.categories).length > 0 ? clean.categories : base.categories,
+      sales: arr(clean.sales, []),
+      movements: arr(clean.movements, []),
+      closings: arr(clean.closings, []),
+      openAccounts: safeAccounts,
+      activeAccountId: safeAccounts.some((a: OpenAccount) => a.id === clean.activeAccountId)
+        ? clean.activeAccountId
+        : safeAccounts[0].id,
+      deliveries: arr(clean.deliveries, base.deliveries),
+      drivers: arr(clean.drivers, base.drivers),
+      deliveryAgencies: arr(clean.deliveryAgencies, base.deliveryAgencies),
+      ticketSequence: typeof clean.ticketSequence === "number" ? clean.ticketSequence : base.ticketSequence,
+      rates: { ...DEFAULT_RATES, ...(clean.rates || {}) },
+      business: { ...base.business, ...(clean.business || {}) },
     };
     emit();
   },
@@ -1493,7 +1554,7 @@ export const actions = {
 
     _state = {
       ..._state,
-      sales: [sale, ..._state.sales],
+      sales: [stripSaleImages(sale), ..._state.sales],
       products: updatedProducts,
       ticketSequence: Math.max(_state.ticketSequence, (sale.ticketNumber || 0) + 1),
     };
@@ -1510,6 +1571,13 @@ export const actions = {
     _state = { ..._state, products: updatedProducts };
     emit();
     checkAndNotifyStockBreaches(prevProducts, updatedProducts);
+  },
+
+  applyRemoteProductDelete(productId: string) {
+    if (!productId) return;
+    if (!_state.products.some((p) => p.id === productId)) return;
+    _state = { ..._state, products: _state.products.filter((p) => p.id !== productId) };
+    emit();
   },
 
   applyRemoteProduct(product: Product) {
@@ -1839,6 +1907,9 @@ if (typeof window !== "undefined") {
   });
   syncService.onRemoteProduct(({ product }) => {
     actions.applyRemoteProduct(product);
+  });
+  syncService.onRemoteProductDelete(({ productId }) => {
+    actions.applyRemoteProductDelete(productId);
   });
   syncService.onRemoteCategories(({ categories }) => {
     actions.applyRemoteCategories(categories);
