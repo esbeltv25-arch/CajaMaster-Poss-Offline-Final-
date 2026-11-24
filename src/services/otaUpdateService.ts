@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import JSZip from "jszip";
 
 export const CapWebView = registerPlugin<{
+  setServerAssetPath: (options: { path: string }) => Promise<void>;
   setServerBasePath: (options: { path: string }) => Promise<void>;
   getServerBasePath: () => Promise<{ path: string }>;
   persistServerBasePath: () => Promise<void>;
@@ -106,6 +107,159 @@ export function saveOtaConfig(config: Partial<OtaConfig>): OtaConfig {
   return updated;
 }
 
+function stripCacheBust(url: string): string {
+  return url.replace(/([?&])t=\d+(&|$)/, (_m, p1, p2) => (p2 ? p1 : "")).replace(/[?&]$/, "");
+}
+
+export interface RunningVersionInfo {
+  version: string;
+  versionCode: number;
+}
+
+let runningVersionCache: RunningVersionInfo | null = null;
+
+/**
+ * Reads the version of the web bundle that is ACTUALLY being served right now
+ * (the /version.json packaged inside the bundle). This is the source of truth:
+ * localStorage may be stale if a reload interrupted the previous install.
+ */
+export async function getRunningVersion(): Promise<RunningVersionInfo | null> {
+  if (runningVersionCache) return runningVersionCache;
+  try {
+    const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.versionCode === "number") {
+        runningVersionCache = { version: String(data.version || ""), versionCode: data.versionCode };
+        // Keep the stored config consistent with what is really running
+        const cfg = getOtaConfig();
+        if (cfg.installedVersionCode !== data.versionCode || cfg.installedVersion !== runningVersionCache.version) {
+          saveOtaConfig({
+            installedVersion: runningVersionCache.version,
+            installedVersionCode: runningVersionCache.versionCode,
+          });
+        }
+        return runningVersionCache;
+      }
+    }
+  } catch {
+    // ignore: fall back to stored config
+  }
+  return null;
+}
+
+async function getEffectiveInstalledCode(): Promise<number> {
+  const running = await getRunningVersion();
+  if (running) return running.versionCode;
+  return getOtaConfig().installedVersionCode;
+}
+
+/** Clears Cache Storage and unregisters Service Workers (they would keep serving the old bundle). */
+async function purgeWebCachesAndServiceWorkers(): Promise<void> {
+  if (typeof window !== "undefined" && "caches" in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch {}
+  }
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    } catch {}
+  }
+}
+
+/**
+ * Points the native WebView to an extracted bundle folder and persists it.
+ * NOTE: setServerBasePath reloads the WebView almost immediately, so everything
+ * that must survive (config, cache purge) has to be done BEFORE calling this.
+ * Both bridge calls are dispatched synchronously (without awaiting the first)
+ * so that persistServerBasePath is queued before the reload happens.
+ */
+async function switchNativeWebViewTo(bundleFolder: string): Promise<void> {
+  const uriRes = await Filesystem.getUri({ directory: Directory.Data, path: bundleFolder });
+  const rawPath = decodeURIComponent(uriRes.uri.replace(/^file:\/\//, ""));
+  console.log("[OTA] Activating bundle at:", rawPath);
+  const p1 = CapWebView.setServerBasePath({ path: rawPath });
+  const p2 = CapWebView.persistServerBasePath();
+  await Promise.allSettled([p1, p2]);
+}
+
+/**
+ * Extracts a JSZip bundle into Directory.Data/ota_bundles/v_<code>.
+ * It is written to a temporary folder first and renamed at the end, so that
+ * an interrupted extraction never leaves a half-written bundle that Android
+ * would try to load on next start.
+ */
+async function extractZipToNativeBundle(
+  zip: JSZip,
+  versionCode: number,
+  onProgress?: (pct: number, msg: string) => void,
+  pctFrom = 60,
+  pctTo = 95
+): Promise<string> {
+  const finalFolder = `ota_bundles/v_${versionCode}`;
+  const tmpFolder = `ota_bundles/tmp_${versionCode}_${Date.now()}`;
+
+  // Detect a common root prefix (e.g. "dist/") that contains index.html
+  const indexEntry = Object.keys(zip.files)
+    .filter((p) => /(^|\/)index\.html$/.test(p) && !zip.files[p].dir)
+    .sort((a, b) => a.length - b.length)[0];
+  const rootPrefix = indexEntry ? indexEntry.slice(0, indexEntry.length - "index.html".length) : "";
+
+  try {
+    await Filesystem.mkdir({ path: tmpFolder, directory: Directory.Data, recursive: true });
+  } catch {}
+
+  const entries = Object.entries(zip.files).filter(([, e]) => !e.dir);
+  let count = 0;
+  for (const [relativePath, zipEntry] of entries) {
+    count++;
+    if (rootPrefix && !relativePath.startsWith(rootPrefix)) continue;
+    const cleanPath = relativePath.slice(rootPrefix.length);
+    if (!cleanPath || cleanPath.includes("..")) continue;
+    const fileData = await zipEntry.async("base64");
+    await Filesystem.writeFile({
+      path: `${tmpFolder}/${cleanPath}`,
+      data: fileData,
+      directory: Directory.Data,
+      recursive: true,
+    });
+    const pct = pctFrom + Math.floor((count / Math.max(1, entries.length)) * (pctTo - pctFrom));
+    onProgress?.(pct, `Extrayendo archivo ${count} de ${entries.length}...`);
+  }
+
+  // Replace any previous copy of the same version
+  try {
+    await Filesystem.rmdir({ path: finalFolder, directory: Directory.Data, recursive: true });
+  } catch {}
+  await Filesystem.rename({
+    from: tmpFolder,
+    to: finalFolder,
+    directory: Directory.Data,
+    toDirectory: Directory.Data,
+  });
+  return finalFolder;
+}
+
+async function readZipManifest(zip: JSZip): Promise<{ version?: string; versionCode?: number; changelog?: string }> {
+  const manifestPath = Object.keys(zip.files)
+    .filter((p) => /(^|\/)version\.json$/.test(p) && !zip.files[p].dir)
+    .sort((a, b) => a.length - b.length)[0];
+  if (!manifestPath) return {};
+  try {
+    const parsed = JSON.parse(await zip.files[manifestPath].async("string"));
+    return {
+      version: parsed.version ? String(parsed.version) : undefined,
+      versionCode: parsed.versionCode ? Number(parsed.versionCode) : undefined,
+      changelog: parsed.changelog ? String(parsed.changelog) : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Checks for updates against the self-hosted remote server endpoint.
  * Designed to be 100% silent, non-blocking, with strict timeout for offline environments.
@@ -114,8 +268,9 @@ export async function checkOtaUpdate(
   options: { timeoutMs?: number; customUrl?: string; silent?: boolean } = {}
 ): Promise<OtaCheckResult> {
   const config = getOtaConfig();
-  const primaryUrl = options.customUrl || config.serverUrl;
+  const primaryUrl = stripCacheBust(options.customUrl || config.serverUrl || DEFAULT_SERVER_URL);
   const timeoutMs = options.timeoutMs ?? 8000;
+  const installedCode = await getEffectiveInstalledCode();
 
   // Add cache-busting timestamp to bypass GitHub Fastly CDN cache
   const cacheBust = `?t=${Date.now()}`;
@@ -125,7 +280,7 @@ export async function checkOtaUpdate(
     `https://esbeltv25-arch.github.io/CajaMaster-Updates/version.json${cacheBust}`,
     "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/version.json",
     "https://esbeltv25-arch.github.io/CajaMaster-Updates/version.json",
-  ];
+  ].filter((u, i, arr) => arr.indexOf(u) === i);
 
   let lastError: any = null;
 
@@ -134,12 +289,11 @@ export async function checkOtaUpdate(
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+      // No custom request headers: they force an extra CORS preflight (OPTIONS)
+      // request. cache: "no-store" + the ?t= parameter already bypass caches.
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Cache-Control": "no-cache",
-        },
+        cache: "no-store",
         signal: controller.signal,
       });
 
@@ -151,10 +305,10 @@ export async function checkOtaUpdate(
 
       const data = (await response.json()) as RemoteVersionInfo;
 
-      saveOtaConfig({ lastCheckedTs: Date.now(), serverUrl: url });
+      saveOtaConfig({ lastCheckedTs: Date.now(), serverUrl: stripCacheBust(url) });
 
       if (data && typeof data.versionCode === "number") {
-        const isNewer = data.versionCode > config.installedVersionCode;
+        const isNewer = data.versionCode > installedCode;
 
         if (isNewer) {
           saveOtaConfig({ pendingUpdate: data });
@@ -190,7 +344,7 @@ export async function checkOtaUpdate(
       if (json.success && json.data && typeof json.data.versionCode === "number") {
         const data = json.data as RemoteVersionInfo;
         saveOtaConfig({ lastCheckedTs: Date.now() });
-        const isNewer = data.versionCode > config.installedVersionCode;
+        const isNewer = data.versionCode > installedCode;
         if (isNewer) {
           saveOtaConfig({ pendingUpdate: data });
           return {
@@ -242,6 +396,7 @@ export async function checkOtaUpdate(
 
 /**
  * Downloads the .zip web bundle and extracts it to device persistent storage.
+ * It does NOT reload the app: call applyOtaUpdateAndReload() afterwards.
  */
 export async function downloadAndExtractOtaBundle(
   info: RemoteVersionInfo,
@@ -250,158 +405,88 @@ export async function downloadAndExtractOtaBundle(
   try {
     onProgress?.(10, "Iniciando descarga del paquete web...");
 
-    // Build candidate URLs for zip download (raw, pages, proxy fallback, local)
-    const zipUrls = [
-      info.updateUrl,
-      `/updates/bundle-v${info.version}.zip`,
-      "/updates/bundle-v1.3.1.zip",
-      "/updates/bundle-v1.3.0.zip",
-      `/api/ota/download-bundle?url=${encodeURIComponent(info.updateUrl)}`,
-    ];
+    // Candidate URLs for the zip of THIS version only (never fall back to an older bundle).
+    const zipUrls: string[] = [info.updateUrl];
     if (info.updateUrl.includes("github.io/CajaMaster-Updates/")) {
       zipUrls.push(
         info.updateUrl.replace(
           "https://esbeltv25-arch.github.io/CajaMaster-Updates/",
           "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/"
-        ),
-        info.updateUrl.replace(
-          "https://esbeltv25-arch.github.io/CajaMaster-Updates/",
-          "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/master/"
         )
       );
     } else if (info.updateUrl.includes("raw.githubusercontent.com")) {
       zipUrls.push(
-        info.updateUrl.replace("/main/", "/master/"),
         info.updateUrl.replace(
           "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/",
           "https://esbeltv25-arch.github.io/CajaMaster-Updates/"
         )
       );
     }
+    zipUrls.push(
+      `https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v${info.version}.zip`,
+      `/api/ota/download-bundle?url=${encodeURIComponent(info.updateUrl)}`
+    );
 
-    let response: Response | null = null;
+    let arrayBuffer: ArrayBuffer | null = null;
     let lastDownloadError: any = null;
 
-    for (const url of zipUrls) {
+    for (const url of zipUrls.filter((u, i, arr) => u && arr.indexOf(u) === i)) {
       try {
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Cache-Control": "no-cache",
-          },
-        });
-        if (res.ok) {
-          response = res;
-          break;
+        // No custom headers (see checkOtaUpdate): avoids an extra CORS preflight.
+        const res = await fetch(url, { method: "GET", cache: "no-store" });
+        if (!res.ok) {
+          lastDownloadError = new Error(`HTTP ${res.status} al descargar ${url}`);
+          continue;
         }
+        onProgress?.(35, "Descargando contenido comprimido (.zip)...");
+        const buf = await res.arrayBuffer();
+        // Reject HTML error pages or truncated downloads
+        const head = new Uint8Array(buf.slice(0, 2));
+        if (buf.byteLength < 1024 || head[0] !== 0x50 || head[1] !== 0x4b) {
+          lastDownloadError = new Error("El archivo descargado no es un ZIP válido.");
+          continue;
+        }
+        arrayBuffer = buf;
+        break;
       } catch (e) {
         lastDownloadError = e;
       }
     }
 
-    if (!response || !response.ok) {
+    if (!arrayBuffer) {
       throw new Error(
-        lastDownloadError?.message ||
-          "Error al descargar paquete .zip desde el repositorio."
+        lastDownloadError?.message || "Error al descargar paquete .zip desde el repositorio."
       );
     }
 
-    onProgress?.(35, "Descargando contenido comprimido (.zip)...");
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-
     onProgress?.(60, "Descomprimiendo archivos de interfaz...");
-
-    // 2. Extract using JSZip
     const zip = await JSZip.loadAsync(arrayBuffer);
-    const destinationFolder = `ota_bundles/v_${info.versionCode}`;
 
-    const hasIndexHtml = Object.keys(zip.files).some((p) => p.endsWith("index.html"));
+    const hasIndexHtml = Object.keys(zip.files).some((p) => /(^|\/)index\.html$/.test(p));
     if (!hasIndexHtml) {
       throw new Error(
         "El archivo ZIP descargado no contiene index.html. Paquete de actualización incompleto."
       );
     }
 
-    const isNative = Capacitor.isNativePlatform();
+    const manifest = await readZipManifest(zip);
+    if (manifest.versionCode && manifest.versionCode !== info.versionCode) {
+      throw new Error(
+        `El ZIP descargado es la versión ${manifest.version || manifest.versionCode}, ` +
+          `pero el manifiesto anuncia ${info.version} (Build ${info.versionCode}). ` +
+          "Revisa version.json y el ZIP publicados en CajaMaster-Updates."
+      );
+    }
 
-    if (isNative) {
-      // Ensure parent directory exists in Capacitor filesystem
-      try {
-        await Filesystem.mkdir({
-          path: destinationFolder,
-          directory: Directory.Data,
-          recursive: true,
-        });
-      } catch (e) {
-        // Directory may already exist
-      }
-
-      let fileCount = 0;
-      const totalFiles = Object.keys(zip.files).length;
-
-      // 3. Write all unpacked files to native storage
-      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-        if (!zipEntry.dir) {
-          const fileData = await zipEntry.async("base64");
-          const cleanPath = relativePath.replace(/^(dist|www|build)\//i, "");
-          await Filesystem.writeFile({
-            path: `${destinationFolder}/${cleanPath}`,
-            data: fileData,
-            directory: Directory.Data,
-            recursive: true,
-          });
-        }
-        fileCount++;
-        const currentPct =
-          60 + Math.floor((fileCount / Math.max(1, totalFiles)) * 35);
-        onProgress?.(
-          currentPct,
-          `Extrayendo archivo ${fileCount} de ${totalFiles}...`
-        );
-      }
-
-      // Switch Capacitor WebView to newly downloaded bundle on Native:
-      try {
-        const uriRes = await Filesystem.getUri({
-          directory: Directory.Data,
-          path: destinationFolder,
-        });
-        const rawPath = uriRes.uri.replace(/^file:\/\//, "");
-        console.log("[OTA] Activating bundle at:", rawPath);
-        await CapWebView.setServerBasePath({ path: rawPath });
-        await CapWebView.persistServerBasePath();
-      } catch (webviewErr) {
-        console.warn("[OTA] CapWebView activation warning:", webviewErr);
-      }
-
-      // Clear caches and Service Workers across both platforms
-      if (typeof window !== "undefined" && "caches" in window) {
-        try {
-          const cacheKeys = await caches.keys();
-          await Promise.all(cacheKeys.map((k) => caches.delete(k)));
-        } catch (cErr) {
-          console.warn("[OTA] Cache clean notice:", cErr);
-        }
-      }
-      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const reg of registrations) {
-            await reg.unregister();
-          }
-        } catch (swErr) {
-          console.warn("[OTA] ServiceWorker unregister notice:", swErr);
-        }
-      }
+    let destinationFolder = `ota_bundles/v_${info.versionCode}`;
+    if (Capacitor.isNativePlatform()) {
+      destinationFolder = await extractZipToNativeBundle(zip, info.versionCode, onProgress, 60, 95);
     }
 
     onProgress?.(98, "Verificando integridad del bundle...");
 
-    // 4. Save metadata
+    // Metadata is saved BEFORE any reload so it is never lost.
     saveOtaConfig({
-      installedVersion: info.version,
-      installedVersionCode: info.versionCode,
       pendingUpdate: null,
       activeBundlePath: destinationFolder,
     });
@@ -410,7 +495,9 @@ export async function downloadAndExtractOtaBundle(
 
     return {
       success: true,
-      message: `Versión ${info.version} (Build ${info.versionCode}) descargada e instalada con éxito.`,
+      message: Capacitor.isNativePlatform()
+        ? `Versión ${info.version} (Build ${info.versionCode}) descargada e instalada.`
+        : `Versión ${info.version} verificada. En navegador/PWA se aplica recargando la página.`,
       bundlePath: destinationFolder,
     };
   } catch (err: any) {
@@ -442,14 +529,9 @@ export async function simulateOtaUpdate(
   onProgress?.(95, "Instalando en almacenamiento local...");
   await new Promise((r) => setTimeout(r, 300));
 
-  saveOtaConfig({
-    installedVersion: simulatedVersion,
-    installedVersionCode: simulatedCode,
-    pendingUpdate: null,
-    activeBundlePath: `ota_bundles/v_${simulatedCode}`,
-  });
-
-  onProgress?.(100, "¡Actualización lista!");
+  // Only a visual simulation: it must NOT change the installed version,
+  // otherwise real updates with a lower code would be ignored afterwards.
+  onProgress?.(100, "¡Simulación terminada! (no se modificó la versión instalada)");
 
   return {
     success: true,
@@ -458,68 +540,58 @@ export async function simulateOtaUpdate(
 }
 
 /**
- * Restores initial APK embedded bundle / rollback.
+ * Restores the web bundle embedded in the APK (rollback).
+ * Deletes every extracted OTA bundle so Android does not load them again on start.
  */
-export function rollbackOtaBundle(): void {
+export async function rollbackOtaBundle(): Promise<void> {
   saveOtaConfig({
-    installedVersion: APP_BASE_VERSION,
-    installedVersionCode: APP_BASE_VERSION_CODE,
     pendingUpdate: null,
     activeBundlePath: null,
   });
+  runningVersionCache = null;
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await Filesystem.rmdir({ path: "ota_bundles", directory: Directory.Data, recursive: true });
+    } catch {}
+    await purgeWebCachesAndServiceWorkers();
+    try {
+      const p1 = CapWebView.setServerAssetPath({ path: "public" });
+      const p2 = CapWebView.persistServerBasePath();
+      await Promise.allSettled([p1, p2]);
+    } catch (e) {
+      console.warn("[OTA] rollback notice:", e);
+    }
+  }
 }
 
 /**
- * Resets local OTA configuration to factory default (versionCode 1000)
- * so that the app will unconditionally recognize remote GitHub updates.
+ * Forgets cached OTA state so the next check compares against the bundle really running.
  */
 export function resetOtaConfigToFactory(): void {
+  runningVersionCache = null;
   saveOtaConfig({
-    installedVersion: APP_BASE_VERSION,
-    installedVersionCode: 1000,
     pendingUpdate: null,
-    activeBundlePath: null,
     lastCheckedTs: null,
   });
 }
 
 /**
- * Applies the update and reloads the WebView seamlessly.
+ * Applies the downloaded update and reloads the WebView.
  */
 export async function applyOtaUpdateAndReload(): Promise<void> {
-  const isNative = Capacitor.isNativePlatform();
-  if (isNative) {
+  // Purge SW/caches first: once the WebView is switched the page reloads immediately.
+  await purgeWebCachesAndServiceWorkers();
+
+  if (Capacitor.isNativePlatform()) {
     try {
       const config = getOtaConfig();
       if (config.activeBundlePath) {
-        const uriRes = await Filesystem.getUri({
-          directory: Directory.Data,
-          path: config.activeBundlePath,
-        });
-        const rawPath = uriRes.uri.replace(/^file:\/\//, "");
-        console.log("[OTA] Applying native bundle at:", rawPath);
-        await CapWebView.setServerBasePath({ path: rawPath });
-        await CapWebView.persistServerBasePath();
+        await switchNativeWebViewTo(config.activeBundlePath);
+        return; // the native side reloads the WebView
       }
     } catch (e) {
       console.warn("[OTA] applyOtaUpdateAndReload native warning:", e);
     }
-  }
-
-  // Clear caches and Service Workers before reload
-  if (typeof window !== "undefined" && "caches" in window) {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    } catch {}
-  }
-  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-    try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        await reg.unregister();
-      }
-    } catch {}
   }
 
   if (typeof window !== "undefined") {
@@ -567,127 +639,51 @@ export async function installOtaBundleFromZipFile(
     onProgress?.(30, "Abriendo y analizando estructura del paquete ZIP...");
     const zip = await JSZip.loadAsync(arrayBuffer);
 
-    // 1. Inspect package contents and find version metadata
-    let detectedVersion = "";
-    let detectedVersionCode = 0;
-    let detectedChangelog = "";
-
-    // Check for version.json in zip entries
-    for (const [path, entry] of Object.entries(zip.files)) {
-      if (!entry.dir && path.endsWith("version.json")) {
-        try {
-          const content = await entry.async("string");
-          const parsed = JSON.parse(content);
-          if (parsed.version) detectedVersion = String(parsed.version);
-          if (parsed.versionCode) detectedVersionCode = Number(parsed.versionCode);
-          if (parsed.changelog) detectedChangelog = String(parsed.changelog);
-          break;
-        } catch {}
-      }
-    }
-
-    // Fallback: If no version.json, extract from zip filename (e.g. bundle-v1.3.1.zip or v1.3.1.zip)
-    if (!detectedVersion) {
-      const match = file.name.match(/v?(\d+\.\d+(\.\d+)?)/i);
-      if (match) {
-        detectedVersion = match[1];
-        const parts = detectedVersion.split(".").map(Number);
-        detectedVersionCode = (parts[0] || 1) * 1000 + (parts[1] || 0) * 100 + (parts[2] || 0);
-      }
-    }
-
-    // Default fallback if still unknown
-    const currentConfig = getOtaConfig();
-    if (!detectedVersion) {
-      detectedVersionCode = currentConfig.installedVersionCode + 1;
-      detectedVersion = `1.${Math.floor(detectedVersionCode / 100)}.${detectedVersionCode % 100}`;
-    }
-    if (!detectedVersionCode) {
-      detectedVersionCode = currentConfig.installedVersionCode + 1;
-    }
-
-    const hasIndexHtml = Object.keys(zip.files).some((p) => p.endsWith("index.html"));
+    const hasIndexHtml = Object.keys(zip.files).some((p) => /(^|\/)index\.html$/.test(p));
     if (!hasIndexHtml) {
       return {
         success: false,
         message:
-          "El archivo ZIP seleccionado no es un paquete web completo válido (falta 'index.html'). Asegúrate de descargar el paquete completo 'bundle-v1.3.5.zip' o 'cajamaster-update-v1.3.5.zip' (1.1 MB).",
+          "El archivo ZIP seleccionado no es un paquete web completo válido (falta 'index.html'). Usa el archivo oficial 'bundle-vX.Y.Z.zip' publicado en CajaMaster-Updates.",
+      };
+    }
+
+    // The version MUST come from the version.json inside the package. Guessing it
+    // from the file name produced wrong build numbers (e.g. 1.3.9 -> 1309) that
+    // blocked every later update.
+    const manifest = await readZipManifest(zip);
+    if (!manifest.version || !manifest.versionCode) {
+      return {
+        success: false,
+        message:
+          "El ZIP no contiene un version.json válido (version y versionCode). Genera el paquete con «npm run release:ota».",
+      };
+    }
+    const detectedVersion = manifest.version;
+    const detectedVersionCode = manifest.versionCode;
+    const detectedChangelog = manifest.changelog || "";
+
+    const installedCode = await getEffectiveInstalledCode();
+    if (detectedVersionCode < installedCode) {
+      return {
+        success: false,
+        message: `Este ZIP es la versión ${detectedVersion} (Build ${detectedVersionCode}), más antigua que la instalada (Build ${installedCode}).`,
       };
     }
 
     onProgress?.(50, `Versión detectada: v${detectedVersion} (Build ${detectedVersionCode}). Extrayendo...`);
 
-    const destinationFolder = `ota_bundles/v_${detectedVersionCode}`;
     const isNative = Capacitor.isNativePlatform();
-    let fileCount = 0;
-    const totalFiles = Object.keys(zip.files).length;
+    const fileCount = Object.values(zip.files).filter((e) => !e.dir).length;
+    let destinationFolder = `ota_bundles/v_${detectedVersionCode}`;
 
     if (isNative) {
-      try {
-        await Filesystem.mkdir({
-          path: destinationFolder,
-          directory: Directory.Data,
-          recursive: true,
-        });
-      } catch {}
-
-      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-        if (!zipEntry.dir) {
-          const fileData = await zipEntry.async("base64");
-          // Clean path (strip leading dist/ or www/ if packed from subdirectory)
-          const cleanPath = relativePath.replace(/^(dist|www|build)\//i, "");
-          await Filesystem.writeFile({
-            path: `${destinationFolder}/${cleanPath}`,
-            data: fileData,
-            directory: Directory.Data,
-            recursive: true,
-          });
-        }
-        fileCount++;
-        const currentPct = 50 + Math.floor((fileCount / Math.max(1, totalFiles)) * 40);
-        onProgress?.(currentPct, `Instalando archivo ${fileCount} de ${totalFiles}...`);
-      }
-
-      // Switch Capacitor WebView to newly installed ZIP bundle on Native:
-      if (isNative) {
-        try {
-          const uriRes = await Filesystem.getUri({
-            directory: Directory.Data,
-            path: destinationFolder,
-          });
-          const rawPath = uriRes.uri.replace(/^file:\/\//, "");
-          console.log("[OTA ZIP] Activating native bundle at:", rawPath);
-          await CapWebView.setServerBasePath({ path: rawPath });
-          await CapWebView.persistServerBasePath();
-        } catch (webviewErr) {
-          console.warn("[OTA ZIP] CapWebView activation warning:", webviewErr);
-        }
-      }
-
-      // Clear caches and Service Workers across both platforms
-      onProgress?.(80, "Limpiando almacenamiento en caché y Service Worker...");
-      if (typeof window !== "undefined" && "caches" in window) {
-        try {
-          const cacheKeys = await caches.keys();
-          await Promise.all(cacheKeys.map((k) => caches.delete(k)));
-        } catch {}
-      }
-      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const reg of registrations) {
-            await reg.unregister();
-          }
-        } catch {}
-      }
-      fileCount = totalFiles;
+      destinationFolder = await extractZipToNativeBundle(zip, detectedVersionCode, onProgress, 50, 90);
     }
 
     onProgress?.(95, "Registrando versión en configuración local...");
 
     saveOtaConfig({
-      installedVersion: detectedVersion,
-      installedVersionCode: detectedVersionCode,
       pendingUpdate: null,
       activeBundlePath: destinationFolder,
       lastCheckedTs: Date.now(),
@@ -708,11 +704,13 @@ export async function installOtaBundleFromZipFile(
       localStorage.setItem(historyKey, JSON.stringify(existing.slice(0, 10)));
     } catch {}
 
-    onProgress?.(100, `¡Versión ${detectedVersion} instalada con éxito!`);
+    onProgress?.(100, `¡Versión ${detectedVersion} lista! Pulsa «Recargar Interfaz» para aplicarla.`);
 
     return {
       success: true,
-      message: `¡Actualización manual instalada exitosamente! Se procesaron ${fileCount} archivos para la versión v${detectedVersion} (Build ${detectedVersionCode}).`,
+      message: isNative
+        ? `Paquete v${detectedVersion} (Build ${detectedVersionCode}) instalado: ${fileCount} archivos. Pulsa «Recargar Interfaz» para aplicarlo.`
+        : `Paquete v${detectedVersion} verificado. En navegador/PWA la versión la determina el servidor web.`,
       version: detectedVersion,
       versionCode: detectedVersionCode,
       fileCount,
@@ -781,20 +779,32 @@ export async function createManualUpdateZipPackage(
 }
 
 /**
- * Directly downloads the compiled full bundle ZIP from the server or GitHub.
+ * Opens the official bundle ZIP published on GitHub (CajaMaster-Updates) so it can be
+ * saved and shared for offline installation. Defaults to the newest known version.
  */
-export function downloadLatestZipDirectly(version: string = "1.3.5"): void {
+export function downloadLatestZipDirectly(version?: string): void {
+  const cfg = getOtaConfig();
+  const v = version || cfg.pendingUpdate?.version || cfg.installedVersion;
+  const url =
+    (!version && cfg.pendingUpdate?.updateUrl) ||
+    `https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v${v}.zip`;
   try {
-    const filename = `cajamaster-update-v${version}.zip`;
+    if (Capacitor.isNativePlatform()) {
+      // The APK has no local /api server: let the system browser download the file.
+      import("../utils/nativeBridge").then(({ openExternalUrl }) => openExternalUrl(url));
+      return;
+    }
     const link = document.createElement("a");
-    link.href = `/api/ota/download-current-zip?version=${encodeURIComponent(version)}`;
-    link.download = filename;
+    link.href = url;
+    link.download = `bundle-v${v}.zip`;
+    link.target = "_blank";
+    link.rel = "noopener";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   } catch (err) {
     console.error("Direct download failed, opening URL", err);
-    window.open(`/api/ota/download-current-zip?version=${encodeURIComponent(version)}`, "_blank");
+    window.open(url, "_blank");
   }
 }
 

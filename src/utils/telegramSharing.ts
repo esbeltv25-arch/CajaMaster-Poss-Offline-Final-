@@ -5,7 +5,7 @@
  */
 
 import type { Sale, DailyClosing, BusinessInfo, ExchangeRates } from "../types";
-import { formatCurrency } from "./currency";
+import { formatCurrency, cashByCurrencyLines } from "./currency";
 import { openExternalUrl } from "./nativeBridge";
 
 /**
@@ -85,27 +85,35 @@ export function generateTelegramTicketText(
   lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`*DETALLE DE PRODUCTOS:*`);
 
+  // Amounts in the currency the sale was charged in
+  const saleCur = (sale as any).currency || "CUP";
+  const saleRates: ExchangeRates | undefined =
+    saleCur !== "CUP" && (sale as any).exchangeRate
+      ? ({ ...(rates || {}), [saleCur]: (sale as any).exchangeRate } as ExchangeRates)
+      : rates;
+  const m = (v: number) => formatCurrency(v, saleCur, saleRates);
+
   sale.items.forEach((item, idx) => {
-    const itemTotal = (item.qty * item.price).toFixed(2);
     lines.push(
-      `${idx + 1}. *${item.name}*\n   ${item.qty} ${item.unit || "u"} x $${item.price.toFixed(2)} = *$${itemTotal} CUP*`
+      `${idx + 1}. *${item.name}*\n   ${item.qty} ${item.unit || "u"} x ${m(item.price)} = *${m(item.qty * item.price)}*`
     );
   });
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`💰 *TOTAL:* $${sale.total.toFixed(2)} CUP`);
+  lines.push(`💰 *TOTAL:* ${m(sale.total)}`);
 
-  if (rates && rates.USD && rates.USD > 0) {
-    const usdVal = (sale.total / rates.USD).toFixed(2);
-    lines.push(`💵 Equivalente USD: ~$${usdVal}`);
+  if (saleCur !== "CUP") {
+    lines.push(`💵 Equivalente: ~${formatCurrency(sale.total, "CUP", saleRates)}`);
+  } else if (rates && rates.USD && rates.USD > 0) {
+    lines.push(`💵 Equivalente: ~${formatCurrency(sale.total, "USD", rates)}`);
   }
 
   lines.push(`*Método de Pago:* ${String(sale.paymentMethod).toUpperCase()}`);
 
   if (sale.cashPaid && sale.cashPaid > 0) {
-    lines.push(`*Efectivo Entregado:* $${sale.cashPaid.toFixed(2)} CUP`);
+    lines.push(`*Efectivo Entregado:* ${m(sale.cashPaid)}`);
     if (sale.change && sale.change > 0) {
-      lines.push(`*Vuelto / Cambio:* $${sale.change.toFixed(2)} CUP`);
+      lines.push(`*Vuelto / Cambio:* ${m(sale.change)}`);
     }
   }
 
@@ -151,22 +159,23 @@ export function generateTelegramZReportText(
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`*RESUMEN FINANCIERO:*`);
-  lines.push(`• *Fondo Inicial de Caja:* $${closing.openingCash.toFixed(2)} CUP`);
-  lines.push(`• *Ventas en Efectivo:* $${closing.cashSales.toFixed(2)} CUP`);
-  lines.push(`• *Ventas por Transferencia:* $${closing.transferSales.toFixed(2)} CUP`);
-  lines.push(`• 💵 *VENTAS TOTALES DEL DÍA:* $${closing.totalSales.toFixed(2)} CUP`);
+  lines.push(`• *Fondo Inicial de Caja:* CUP ${closing.openingCash.toFixed(2)}`);
+  lines.push(`• *Ventas en Efectivo:* CUP ${closing.cashSales.toFixed(2)}`);
+  lines.push(`• *Ventas por Transferencia:* CUP ${closing.transferSales.toFixed(2)}`);
+  lines.push(`• 💵 *VENTAS TOTALES DEL DÍA:* CUP ${closing.totalSales.toFixed(2)}`);
   lines.push(`• 🧾 *Tickets Emitidos:* ${closing.totalTickets}`);
   lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`🎯 *Efectivo Esperado (Teórico):* $${expectedCash.toFixed(2)} CUP`);
-  lines.push(`💵 *Efectivo Real Contado:* $${closing.countedCash.toFixed(2)} CUP`);
+  lines.push(`🎯 *Efectivo Esperado (Teórico):* CUP ${expectedCash.toFixed(2)}`);
+  lines.push(`💵 *Efectivo Real Contado:* CUP ${closing.countedCash.toFixed(2)}`);
+  cashByCurrencyLines(closing.cashByCurrency).forEach((l) => lines.push(`   ◦ ${l}`));
 
   const diff = closing.cashDiscrepancy;
   if (Math.abs(diff) < 0.01) {
     lines.push(`🟢 *CUADRE EXACTO:* $0.00 CUP`);
   } else if (diff > 0) {
-    lines.push(`🟡 *SOBRANTE DE CAJA:* +$${diff.toFixed(2)} CUP`);
+    lines.push(`🟡 *SOBRANTE DE CAJA:* +CUP ${diff.toFixed(2)}`);
   } else {
-    lines.push(`🔴 *FALTANTE DE CAJA:* -$${Math.abs(diff).toFixed(2)} CUP`);
+    lines.push(`🔴 *FALTANTE DE CAJA:* -CUP ${Math.abs(diff).toFixed(2)}`);
   }
 
   if (closing.billCounts && Object.keys(closing.billCounts).length > 0) {
@@ -181,7 +190,7 @@ export function generateTelegramZReportText(
       activeBills.forEach((b) => {
         const sub = b.count * b.value;
         const tag = b.value >= 10000 ? " *(Nuevo)*" : "";
-        lines.push(`• ${b.count}x $${b.value.toLocaleString("es-ES")}${tag} = $${sub.toLocaleString("es-ES")} CUP`);
+        lines.push(`• ${b.count}x ${b.value.toLocaleString("es-ES")} CUP${tag} = CUP ${sub.toLocaleString("es-ES")}`);
       });
     }
   }

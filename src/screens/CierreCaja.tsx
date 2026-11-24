@@ -23,8 +23,17 @@ import {
   IconShieldCheck,
   IconScale,
 } from "../components/Icons";
-import { formatCurrency, roundCurrency } from "../utils/currency";
-import type { DailyClosing, PhysicalCountItem, BusinessInfo, ExchangeRates, PrinterDevice } from "../types";
+import { formatCurrency, roundCurrency, cashByCurrencyLines } from "../utils/currency";
+
+/** Cash portion of a sale. Same rule as the IPVE report (Reportes.tsx). */
+function mixedCashPart(s: { paymentMethod: string; total: number; cashPaid?: number }): number {
+  const total = Number(s.total) || 0;
+  if (s.paymentMethod !== "mixed") return total;
+  return typeof s.cashPaid === "number" && s.cashPaid > 0 && s.cashPaid < total ? s.cashPaid : total;
+}
+import type {
+  CashCurrencyCount,
+  CurrencyCode, DailyClosing, PhysicalCountItem, BusinessInfo, ExchangeRates, PrinterDevice } from "../types";
 import { generateZReportPdf, buildZReportPdfPayload } from "../utils/pdfExport";
 import {
   downloadOrShareDailyClosingCsv,
@@ -84,6 +93,7 @@ export function generateZReportShareText(
     `• 🧾 Tickets Emitidos: ${closing.totalTickets}`,
     `• 🎯 *Efectivo Esperado (Teórico):* ${expectedCash.toFixed(2)} CUP`,
     `• 💵 Efectivo Contado (Físico): ${closing.countedCash.toFixed(2)} CUP`,
+    ...cashByCurrencyLines(closing.cashByCurrency).map((l) => `   ◦ ${l}`),
     `• ⚖️ *Descuadre / Diferencia:* ${closing.cashDiscrepancy === 0 ? "0.00 CUP (Cuadrada)" : (closing.cashDiscrepancy > 0 ? "+" : "") + closing.cashDiscrepancy.toFixed(2) + " CUP"}`,
     `• ${statusText}`,
   ];
@@ -100,7 +110,7 @@ export function generateZReportShareText(
       activeBills.forEach((b) => {
         const sub = b.count * b.value;
         const tag = b.value >= 10000 ? " *(Nuevo)*" : "";
-        lines.push(`• ${b.count}x $${b.value.toLocaleString("es-ES")}${tag} = $${sub.toLocaleString("es-ES")} CUP`);
+        lines.push(`• ${b.count}x ${b.value.toLocaleString("es-ES")} CUP${tag} = CUP ${sub.toLocaleString("es-ES")}`);
       });
     }
   }
@@ -145,6 +155,8 @@ export function CierreCajaScreen() {
 
   const [openingCash, setOpeningCash] = useState<number>(1000); // Fondo de caja inicial sugerido
   const [countedCash, setCountedCash] = useState<number | "">("");
+  // Physical count of foreign currency cash (USD/EUR/MLC), in that currency
+  const [foreignCounted, setForeignCounted] = useState<Record<string, number | "">>({});
   const [showDenomCalculator, setShowDenomCalculator] = useState(false);
   const [billCounts, setBillCounts] = useState<Record<number, number>>({});
   const [physicalCounts, setPhysicalCounts] = useState<Record<string, number>>(() => {
@@ -162,11 +174,12 @@ export function CierreCajaScreen() {
   const [storagePayload, setStoragePayload] = useState<FileExportPayload | null>(null);
 
   // Today's Sales Calculation
-  const startOfDay = useMemo(() => {
+  // Recomputed on every render: a POS left open past midnight must switch day
+  const startOfDay = (() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     return now.getTime();
-  }, []);
+  })();
 
   const todaySales = useMemo(() => {
     return state.sales.filter(
@@ -181,7 +194,7 @@ export function CierreCajaScreen() {
     return roundCurrency(
       todaySales
         .filter((s) => s.paymentMethod === "cash" || s.paymentMethod === "mixed")
-        .reduce((a, b) => a + (b.total || 0), 0)
+        .reduce((a, b) => a + mixedCashPart(b), 0)
     );
   }, [todaySales]);
 
@@ -192,9 +205,10 @@ export function CierreCajaScreen() {
           (s) =>
             s.paymentMethod === "transfer" ||
             s.paymentMethod === "transfermovil" ||
-            s.paymentMethod === "enzona"
+            s.paymentMethod === "enzona" ||
+            s.paymentMethod === "mixed"
         )
-        .reduce((a, b) => a + (b.total || 0), 0)
+        .reduce((a, b) => a + (b.paymentMethod === "mixed" ? (b.total || 0) - mixedCashPart(b) : b.total || 0), 0)
     );
   }, [todaySales]);
 
@@ -202,7 +216,48 @@ export function CierreCajaScreen() {
   // Fórmula obligatoria: [Efectivo Esperado (Teórico)] = [Fondo Inicial] + [Ventas en Efectivo]
   const expectedCashInDrawer = roundCurrency(openingCash + cashSalesTotal);
 
-  const realCountedNum = typeof countedCash === "number" ? countedCash : 0;
+  // ---- Cash by currency: sales charged in USD/EUR/MLC leave that currency in the drawer
+  const foreignCash = useMemo(() => {
+    const map: Record<string, { expected: number; expectedCUP: number }> = {};
+    todaySales.forEach((s) => {
+      if (s.paymentMethod !== "cash" && s.paymentMethod !== "mixed") return;
+      const cur = s.currency || "CUP";
+      if (cur === "CUP") return;
+      const partCUP = mixedCashPart(s);
+      const rate = s.exchangeRate || state.rates[cur] || 1;
+      if (!map[cur]) map[cur] = { expected: 0, expectedCUP: 0 };
+      map[cur].expected += partCUP / rate;
+      map[cur].expectedCUP += partCUP;
+    });
+    return Object.entries(map).map(([currency, v]) => {
+      const expected = roundCurrency(v.expected);
+      // Average rate of the day's sales in that currency: counting exactly what was received gives 0 difference
+      const rate = v.expected > 0 ? v.expectedCUP / v.expected : state.rates[currency as CurrencyCode] || 1;
+      const raw = foreignCounted[currency];
+      const counted = raw === "" || raw === undefined ? expected : raw;
+      return {
+        currency: currency as CurrencyCode,
+        expected,
+        expectedCUP: roundCurrency(v.expectedCUP),
+        counted: roundCurrency(counted),
+        entered: !(raw === "" || raw === undefined),
+        difference: roundCurrency(counted - expected),
+        countedCUP: roundCurrency(counted * rate),
+        rate,
+      };
+    });
+  }, [todaySales, state.rates, foreignCounted]);
+  const hasForeignCash = foreignCash.length > 0;
+  const foreignExpectedCUP = roundCurrency(foreignCash.reduce((a, r) => a + r.expectedCUP, 0));
+  const foreignCountedCUP = roundCurrency(foreignCash.reduce((a, r) => a + r.countedCUP, 0));
+  // CUP that must be in the drawer: opening + sales charged in CUP
+  const expectedCUPInDrawer = roundCurrency(expectedCashInDrawer - foreignExpectedCUP);
+  const anyCountEntered = countedCash !== "" || foreignCash.some((r) => r.entered);
+
+  // Total counted, expressed in CUP (CUP count + foreign counts converted)
+  const realCountedNum = roundCurrency(
+    (typeof countedCash === "number" ? countedCash : hasForeignCash ? expectedCUPInDrawer : 0) + foreignCountedCUP
+  );
   // Fórmula obligatoria: [Descuadre / Diferencia] = [Efectivo Contado (Físico)] - [Efectivo Esperado (Teórico)]
   const cashDiscrepancy = roundCurrency(realCountedNum - expectedCashInDrawer);
 
@@ -253,9 +308,9 @@ export function CierreCajaScreen() {
         transferSales: transferSalesTotal,
         totalSales: totalSalesAmount,
         totalTickets: todaySales.length,
-        countedCash: countedCash === "" ? expectedCashInDrawer : realCountedNum,
+        countedCash: anyCountEntered ? realCountedNum : expectedCashInDrawer,
         expectedCash: expectedCashInDrawer,
-        cashDiscrepancy: countedCash === "" ? 0 : cashDiscrepancy,
+        cashDiscrepancy: anyCountEntered ? cashDiscrepancy : 0,
         inventoryUnitsCounted: totalPhysicalUnits,
         inventoryTotalCost: totalPhysicalCost,
         inventoryTotalValue: totalPhysicalValue,
@@ -289,8 +344,27 @@ export function CierreCajaScreen() {
   };
 
   const handleRegisterClosing = () => {
-    const finalCounted = countedCash === "" ? expectedCashInDrawer : roundCurrency(realCountedNum);
+    const finalCounted = anyCountEntered ? roundCurrency(realCountedNum) : expectedCashInDrawer;
     const finalDiscrepancy = roundCurrency(finalCounted - expectedCashInDrawer);
+    const countedCUPOnly = countedCash === "" ? expectedCUPInDrawer : roundCurrency(countedCash);
+    const cashByCurrency: CashCurrencyCount[] | undefined = hasForeignCash
+      ? [
+          {
+            currency: "CUP",
+            expected: expectedCUPInDrawer,
+            counted: countedCUPOnly,
+            difference: roundCurrency(countedCUPOnly - expectedCUPInDrawer),
+            rate: 1,
+          },
+          ...foreignCash.map((r) => ({
+            currency: r.currency,
+            expected: r.expected,
+            counted: r.counted,
+            difference: r.difference,
+            rate: Math.round(r.rate * 10000) / 10000,
+          })),
+        ]
+      : undefined;
 
     // Pre-closure auto-healing & sanitization to eliminate floating point inconsistencies
     const sanitized = sanitizeClosingData({
@@ -307,6 +381,7 @@ export function CierreCajaScreen() {
       inventoryTotalValue: totalPhysicalValue,
       counts: countItems,
       billCounts: Object.keys(billCounts).length > 0 ? billCounts : undefined,
+      cashByCurrency,
       notes: notes.trim() || undefined,
     });
 
@@ -483,12 +558,12 @@ export function CierreCajaScreen() {
                 FONDO DE CAJA INICIAL (CUP)
               </label>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
-                <span className="text-slate-400 font-bold text-sm">$</span>
+                <span className="text-slate-400 font-bold text-xs">CUP</span>
                 <input
                   type="number"
                   value={openingCash}
                   onChange={(e) => setOpeningCash(parseFloat(e.target.value || "0"))}
-                  className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
+                  className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
             </div>
@@ -496,7 +571,7 @@ export function CierreCajaScreen() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-extrabold text-slate-500 uppercase block">
-                  EFECTIVO FÍSICO CONTADO EN CAJA (CUP)
+                  {hasForeignCash ? "EFECTIVO CONTADO EN PESOS (CUP)" : "EFECTIVO FÍSICO CONTADO EN CAJA (CUP)"}
                 </label>
                 <button
                   type="button"
@@ -507,15 +582,15 @@ export function CierreCajaScreen() {
                 </button>
               </div>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
-                <span className="text-slate-400 font-bold text-sm">$</span>
+                <span className="text-slate-400 font-bold text-xs">CUP</span>
                 <input
                   type="number"
                   value={countedCash}
                   onChange={(e) =>
                     setCountedCash(e.target.value === "" ? "" : parseFloat(e.target.value))
                   }
-                  placeholder={String(expectedCashInDrawer)}
-                  className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
+                  placeholder={String(hasForeignCash ? expectedCUPInDrawer : expectedCashInDrawer)}
+                  className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
             </div>
@@ -524,9 +599,9 @@ export function CierreCajaScreen() {
           {/* Interactive Cuban Denominations Calculator Card */}
           {showDenomCalculator && (
             <div className="p-4 rounded-2xl bg-[var(--color-card-bg)] border-2 border-amber-400/80 shadow-sm space-y-3 animate-pop">
-              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2">
-                <div>
-                  <h4 className="font-extrabold text-xs text-[var(--color-ink)] flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-2">
+                <div className="min-w-0">
+                  <h4 className="font-extrabold text-xs text-[var(--color-ink)] flex flex-wrap items-center gap-1.5">
                     <span>💵 Calculadora de Billetes de Cuba</span>
                     <span className="bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full text-[9px] font-black uppercase">
                       Incluye $10.000 y $20.000
@@ -545,7 +620,7 @@ export function CierreCajaScreen() {
               </div>
 
               {/* Grid of Denominations */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2">
                 {CUBAN_DENOMINATIONS.map((d) => {
                   const currentCount = billCounts[d.value] || "";
                   const subtotal = (Number(currentCount) || 0) * d.value;
@@ -559,8 +634,8 @@ export function CierreCajaScreen() {
                           : "bg-slate-50 border-slate-200"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-slate-900">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="font-black text-xs text-slate-900 whitespace-nowrap">
                           ${d.value.toLocaleString("es-ES")}
                         </span>
                         {d.isNew && (
@@ -620,6 +695,72 @@ export function CierreCajaScreen() {
             </div>
           )}
 
+          {/* Cash count by currency (only when something was charged in USD/EUR/MLC) */}
+          {hasForeignCash && (
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2" id="cash-by-currency">
+              <div className="text-xs font-extrabold text-slate-900">Efectivo por moneda</div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Cuenta cada moneda por separado. Lo esperado en divisas sale de las ventas cobradas en esa moneda,
+                con la tasa a la que se cobraron.
+              </p>
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 text-xs">
+                <span className="font-extrabold text-slate-900">CUP</span>
+                <span className="text-slate-600">
+                  Esperado: <b>{formatCurrency(expectedCUPInDrawer, "CUP", state.rates)}</b>
+                  <span className="block text-[10px] text-slate-400">Fondo + ventas cobradas en CUP · cuenta arriba</span>
+                </span>
+                <span
+                  className={`font-extrabold ${
+                    countedCash === "" || roundCurrency(Number(countedCash) - expectedCUPInDrawer) === 0
+                      ? "text-emerald-700"
+                      : Number(countedCash) > expectedCUPInDrawer
+                      ? "text-blue-700"
+                      : "text-rose-700"
+                  }`}
+                >
+                  {countedCash === ""
+                    ? "—"
+                    : (Number(countedCash) - expectedCUPInDrawer > 0 ? "+" : "") +
+                      formatCurrency(roundCurrency(Number(countedCash) - expectedCUPInDrawer), "CUP", state.rates)}
+                </span>
+                {foreignCash.map((r) => (
+                  <div key={r.currency} className="contents">
+                    <span className="font-extrabold text-slate-900">{r.currency}</span>
+                    <div className="min-w-0 space-y-1">
+                      <span className="text-slate-600 block">
+                        Esperado: <b>{formatCurrency(r.expected * r.rate, r.currency, { ...state.rates, [r.currency]: r.rate })}</b>
+                        <span className="text-[10px] text-slate-400"> (≈ {formatCurrency(r.expectedCUP, "CUP", state.rates)})</span>
+                      </span>
+                      <div className="neu-inset rounded-xl px-2.5 h-9 flex items-center gap-1.5">
+                        <span className="text-slate-400 font-bold text-[10px]">{r.currency}</span>
+                        <input
+                          type="number"
+                          id={`input-counted-${r.currency}`}
+                          value={foreignCounted[r.currency] ?? ""}
+                          onChange={(e) =>
+                            setForeignCounted((prev) => ({
+                              ...prev,
+                              [r.currency]: e.target.value === "" ? "" : parseFloat(e.target.value),
+                            }))
+                          }
+                          placeholder={String(r.expected)}
+                          className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-sm text-[var(--color-ink)]"
+                        />
+                      </div>
+                    </div>
+                    <span
+                      className={`font-extrabold ${
+                        !r.entered || r.difference === 0 ? "text-emerald-700" : r.difference > 0 ? "text-blue-700" : "text-rose-700"
+                      }`}
+                    >
+                      {!r.entered ? "—" : `${r.difference > 0 ? "+" : ""}${r.difference.toFixed(2)} ${r.currency}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Cash Balance Box */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
@@ -629,10 +770,19 @@ export function CierreCajaScreen() {
               <div className="text-base font-extrabold text-slate-900">
                 {formatCurrency(expectedCashInDrawer, "CUP", state.rates)}
               </div>
+              {hasForeignCash && (
+                <div className="text-[11px] text-slate-500 font-semibold">
+                  {[
+                    formatCurrency(expectedCUPInDrawer, "CUP", state.rates),
+                    ...foreignCash.map((r) => `${r.currency} ${r.expected.toFixed(2)}`),
+                  ].join(" + ")}
+                  {" "}(total equivalente en CUP)
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {countedCash !== "" && (
+              {anyCountEntered && (
                 <div
                   className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${
                     cashDiscrepancy === 0
@@ -1340,9 +1490,26 @@ function ZReportModal({
             </div>
 
             <div className="flex justify-between font-semibold pt-0.5">
-              <span>Efectivo Contado (Físico):</span>
+              <span>Efectivo Contado (Físico){closing.cashByCurrency?.length ? " (equiv. CUP)" : ""}:</span>
               <span>{formatCurrency(closing.countedCash, "CUP", state.rates)}</span>
             </div>
+
+            {closing.cashByCurrency && closing.cashByCurrency.length > 0 && (
+              <div className="pt-1 space-y-0.5" id="z-cash-by-currency">
+                <div className="font-black text-[10.5px] uppercase text-slate-600">Arqueo por moneda</div>
+                {closing.cashByCurrency.map((r) => (
+                  <div key={r.currency} className="flex justify-between text-[11px] gap-2">
+                    <span className="font-bold">{r.currency}</span>
+                    <span className="text-right">
+                      {r.expected.toFixed(2)} esperado · {r.counted.toFixed(2)} contado ·{" "}
+                      <b className={r.difference === 0 ? "text-emerald-700" : r.difference > 0 ? "text-blue-700" : "text-rose-700"}>
+                        {r.difference === 0 ? "0.00" : `${r.difference > 0 ? "+" : ""}${r.difference.toFixed(2)}`}
+                      </b>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex justify-between font-black text-xs pt-1 border-t border-dashed border-slate-200">
               <span>Descuadre / Diferencia:</span>

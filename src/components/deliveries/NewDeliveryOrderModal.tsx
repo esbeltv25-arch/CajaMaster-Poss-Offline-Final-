@@ -508,7 +508,7 @@ export function NewDeliveryOrderModal({
                               </div>
                             </div>
                             <span className="font-extrabold text-slate-900 shrink-0">
-                              {formatCurrency(it.price * it.qty, "CUP", state.rates)}
+                              {formatCurrency(it.price * it.qty, state.selectedCurrency, state.rates)}
                             </span>
                           </div>
                         ))}
@@ -523,7 +523,7 @@ export function NewDeliveryOrderModal({
                   {/* Pricing and Details Badges */}
                   <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-bold text-slate-700">
                     <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200">
-                      🛵 Envío: <strong className="text-slate-900">${liveParsed.deliveryFee} CUP</strong>
+                      🛵 Envío: <strong className="text-slate-900">{formatCurrency(liveParsed.deliveryFee, state.selectedCurrency, state.rates)}</strong>
                     </span>
                     <span className="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200">
                       💳 Pago: <strong className="text-slate-900">{liveParsed.paymentMethod.toUpperCase()}</strong> ({liveParsed.paymentStatus})
@@ -540,7 +540,7 @@ export function NewDeliveryOrderModal({
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Calculado</span>
                       <span className="text-base font-black text-amber-400">
-                        {formatCurrency(liveTotal, "CUP", state.rates)}
+                        {formatCurrency(liveTotal, state.selectedCurrency, state.rates)}
                       </span>
                     </div>
                     <span className="text-xs text-slate-300 font-medium">
@@ -691,7 +691,7 @@ export function NewDeliveryOrderModal({
                     </span>
                   </h3>
                   <span className="text-xs font-extrabold text-slate-900">
-                    Subtotal: {formatCurrency(itemsSubtotal, "CUP", state.rates)}
+                    Subtotal: {formatCurrency(itemsSubtotal, state.selectedCurrency, state.rates)}
                   </span>
                 </div>
 
@@ -710,7 +710,7 @@ export function NewDeliveryOrderModal({
                               {item.name}
                             </p>
                             <p className="text-[10px] text-slate-500 font-medium">
-                              {formatCurrency(item.price, "CUP", state.rates)} c/u
+                              {formatCurrency(item.price, state.selectedCurrency, state.rates)} c/u
                             </p>
                           </div>
                         </div>
@@ -737,7 +737,7 @@ export function NewDeliveryOrderModal({
                           </div>
 
                           <span className="font-extrabold text-slate-900 w-16 text-right">
-                            {formatCurrency(item.price * item.qty, "CUP", state.rates)}
+                            {formatCurrency(item.price * item.qty, state.selectedCurrency, state.rates)}
                           </span>
 
                           <button
@@ -918,7 +918,7 @@ export function NewDeliveryOrderModal({
                     Total a Cobrar
                   </p>
                   <p className="text-lg font-black tracking-tight text-amber-400">
-                    {formatCurrency(total, "CUP", state.rates)}
+                    {formatCurrency(total, state.selectedCurrency, state.rates)}
                   </p>
                 </div>
                 <div className="text-right text-[10px] text-slate-300 font-medium">

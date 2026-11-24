@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import QRCode from "qrcode";
 import {
@@ -37,9 +38,14 @@ interface OtaUpdateModalProps {
   initialTab?: OtaModalTab;
 }
 
-export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUpdateModalProps) {
-  if (!isOpen) return null;
+export function OtaUpdateModal(props: OtaUpdateModalProps) {
+  // Early return lives in this wrapper so the inner component always calls
+  // the same hooks in the same order (Rules of Hooks).
+  if (!props.isOpen) return null;
+  return <OtaUpdateModalContent {...props} />;
+}
 
+function OtaUpdateModalContent({ onClose, initialTab = "update" }: OtaUpdateModalProps) {
   const [config, setConfig] = useState(() => getOtaConfig());
   const [activeTab, setActiveTab] = useState<OtaModalTab>(initialTab);
 
@@ -63,8 +69,8 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ZIP Package Builder State (for admin/merchant)
-  const [builderVersion, setBuilderVersion] = useState("1.3.5");
-  const [builderCode, setBuilderCode] = useState(1050);
+  const [builderVersion, setBuilderVersion] = useState(config.installedVersion);
+  const [builderCode, setBuilderCode] = useState(config.installedVersionCode);
   const [builderChangelog, setBuilderChangelog] = useState(
     "• Cámara universal Android/hardware con selector nativo y captura instantánea.\n• Eliminación total de errores de cámara antigua y soporte offline 100%.\n• Activación directa de bundles OTA en WebView sin reinicios manuales."
   );
@@ -76,7 +82,9 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
 
   // Generate QR code for mobile phone direct download
   const GITHUB_ZIP_URL =
-    "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.3.5.zip";
+    remoteUpdate?.updateUrl ||
+    config.pendingUpdate?.updateUrl ||
+    `https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v${config.installedVersion}.zip`;
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -93,17 +101,22 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
     })
       .then((url) => setQrCodeDataUrl(url))
       .catch((e) => console.warn("Could not generate QR code:", e));
-  }, []);
+  }, [GITHUB_ZIP_URL]);
 
   // Online Check Handler
-  const handleCheck = async () => {
+  const handleCheck = async (forceReinstall = false) => {
     try {
       setIsChecking(true);
       setCheckMessage(null);
-      const res = await checkOtaUpdate({ timeoutMs: 5000 });
+      const res = await checkOtaUpdate({ timeoutMs: 8000 });
       setConfig(getOtaConfig());
 
-      if (res.hasUpdate && res.remoteInfo) {
+      if (forceReinstall && res.remoteInfo && !res.hasUpdate) {
+        setRemoteUpdate(res.remoteInfo);
+        setCheckMessage(
+          `Ya tienes la versión ${res.remoteInfo.version}. Pulsa descargar para reinstalarla desde GitHub.`
+        );
+      } else if (res.hasUpdate && res.remoteInfo) {
         setRemoteUpdate(res.remoteInfo);
         setCheckMessage(`¡Nueva versión ${res.remoteInfo.version} disponible en GitHub!`);
       } else if (res.offline) {
@@ -138,8 +151,12 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
       if (res.success) {
         setConfig(getOtaConfig());
         setRemoteUpdate(null);
-        setCheckMessage(`${res.message} Pulsa «Recargar Interfaz» para aplicar los cambios ahora.`);
-        setStatusText("¡Instalación completada con éxito!");
+        setCheckMessage(`${res.message} Aplicando la nueva versión...`);
+        setStatusText("¡Instalación completada! Reiniciando la interfaz...");
+        // Apply right away: switches the WebView to the new bundle and reloads.
+        setTimeout(() => {
+          applyOtaUpdateAndReload();
+        }, 1200);
       } else {
         setStatusText(res.message);
         setCheckMessage("Error: " + res.message);
@@ -184,8 +201,9 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
     setCheckMessage("URL del servidor actualizada correctamente.");
   };
 
-  const handleRollback = () => {
-    rollbackOtaBundle();
+  const handleRollback = async () => {
+    setCheckMessage("Restableciendo la versión base empaquetada con el APK...");
+    await rollbackOtaBundle();
     setConfig(getOtaConfig());
     setCheckMessage("Se ha restablecido la versión base empaquetada con el APK.");
   };
@@ -228,6 +246,11 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
           isError: false,
         });
         setSelectedZipFile(null);
+        if (Capacitor.isNativePlatform()) {
+          setTimeout(() => {
+            applyOtaUpdateAndReload();
+          }, 1500);
+        }
       } else {
         setZipMessage({
           text: res.message,
@@ -481,7 +504,7 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
               {/* Action Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                 <button
-                  onClick={handleCheck}
+                  onClick={() => handleCheck()}
                   disabled={isChecking || isDownloading}
                   className="py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
                 >
@@ -521,7 +544,7 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
                 onClick={() => {
                   resetOtaConfigToFactory();
                   setConfig(getOtaConfig());
-                  handleCheck();
+                  handleCheck(true);
                 }}
                 className="w-full py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 border border-slate-200"
                 title="Restablece la versión detectada para forzar la descarga de la última versión desde GitHub"
@@ -534,14 +557,14 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
           {/* TAB 2: MANUAL ZIP INSTALLATION (OFFLINE) */}
           {activeTab === "zip" && (
             <div className="space-y-4">
-              {/* Direct Download Helper Banner for v1.3.5 */}
+              {/* Direct Download Helper Banner (latest version) */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950 text-white space-y-2.5 shadow-md border border-slate-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">⚡</span>
                     <div>
                       <h4 className="font-black text-xs text-amber-400">
-                        ¿Necesitas el archivo ZIP v1.3.5 (1.1 MB)?
+                        ¿Necesitas el archivo ZIP de la última versión?
                       </h4>
                       <p className="text-[11px] text-slate-300">
                         Descárgalo en tu Mac / PC o en tu móvil para actualizar 100% offline.
@@ -556,11 +579,11 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => downloadLatestZipDirectly("1.3.5")}
+                    onClick={() => downloadLatestZipDirectly()}
                     className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 cursor-pointer transition shadow-xs active:scale-95"
                   >
                     <IconDownload size={14} />
-                    <span>Descargar «cajamaster-update-v1.3.5.zip»</span>
+                    <span>Descargar ZIP oficial desde GitHub</span>
                   </button>
                   <button
                     type="button"
@@ -774,11 +797,11 @@ export function OtaUpdateModal({ isOpen, onClose, initialTab = "update" }: OtaUp
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => downloadLatestZipDirectly("1.3.5")}
+                    onClick={() => downloadLatestZipDirectly()}
                     className="py-3 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-95"
                   >
                     <IconDownload size={16} />
-                    <span>Descargar «cajamaster-update-v1.3.5.zip»</span>
+                    <span>Descargar ZIP oficial desde GitHub</span>
                   </button>
 
                   <button

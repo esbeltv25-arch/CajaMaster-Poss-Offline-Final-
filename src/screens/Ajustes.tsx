@@ -73,7 +73,7 @@ import { QuickStartGuideModal, type GuideSection } from "../components/QuickStar
 import { OtaUpdateModal, type OtaModalTab } from "../components/OtaUpdateModal";
 import { ScreenCalibrationModal } from "../components/ScreenCalibrationModal";
 import { getOtaConfig, downloadLatestZipDirectly } from "../services/otaUpdateService";
-import { getLicenseStatus, revokeLicense, validateLicenseKey } from "../utils/licenseSecurity";
+import { getLicenseStatus, revokeLicense, validateLicenseKey, formatLicenseExpiry } from "../utils/licenseSecurity";
 import { generateUserManualPdf } from "../utils/userManualPdf";
 import { PrinterSelectionModal } from "../components/PrinterSelectionModal";
 import { PWAInstallCard } from "../components/PWAInstallBanner";
@@ -85,6 +85,7 @@ import {
 import type { BusinessInfo } from "../types";
 import { clearNativeAppCache } from "../utils/nativeBridge";
 import { ConfirmationModal } from "../components/ConfirmationModal";
+import { ExchangeRatesCard } from "../components/ExchangeRatesCard";
 
 export function AjustesScreen({
   deviceId,
@@ -327,11 +328,6 @@ export function AjustesScreen({
     setBizForm({ ...state.business });
   }, [state.business]);
 
-  // Exchange rates editing
-  const [usdRate, setUsdRate] = useState(state.rates.USD);
-  const [eurRate, setEurRate] = useState(state.rates.EUR);
-  const [mlcRate, setMlcRate] = useState(state.rates.MLC);
-  const [ratesSavedMsg, setRatesSavedMsg] = useState(false);
 
   const totalSales = state.sales.reduce((a, s) => a + s.total, 0);
 
@@ -371,16 +367,6 @@ export function AjustesScreen({
     setTimeout(() => setPresetToast(null), 3000);
   }
 
-  function handleSaveRates() {
-    actions.setExchangeRates({
-      CUP: 1,
-      USD: Math.max(1, usdRate),
-      EUR: Math.max(1, eurRate),
-      MLC: Math.max(1, mlcRate),
-    });
-    setRatesSavedMsg(true);
-    setTimeout(() => setRatesSavedMsg(false), 2000);
-  }
 
   const isOffline = state.connectivityMode === "offline";
   const isPhone = layoutMode === "phone";
@@ -412,7 +398,7 @@ export function AjustesScreen({
 
         {/* Business Details Card (Full White Label Configuration) */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold shrink-0">
                 🏪
@@ -421,7 +407,7 @@ export function AjustesScreen({
                 <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
                   Datos del Establecimiento (Marca Blanca)
                 </h3>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   Personalización integral de identidad, taxonomía de venta y tickets
                 </p>
               </div>
@@ -592,7 +578,7 @@ export function AjustesScreen({
 
         {/* Multi-Device Real-Time Sync Card (Host/Client, Wi-Fi & Cloud) */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
                 <IconUsers size={18} />
@@ -618,7 +604,7 @@ export function AjustesScreen({
                       : "Inactivo"}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   {syncService.getConfig().role === "primary" ? "👑 Servidor / Host" : "📱 Camarero / Cliente"} • Red {syncService.getConfig().connectionMode === "local" ? "Wi-Fi Local" : "Nube"} • Sala: {syncService.getConfig().roomKey}
                 </p>
               </div>
@@ -655,7 +641,7 @@ export function AjustesScreen({
 
         {/* Printer & Hardware Management Card */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
                 <IconPrinter size={18} />
@@ -669,7 +655,7 @@ export function AjustesScreen({
                     {defaultPrinter ? defaultPrinter.connectionType.toUpperCase() : "SISTEMA"}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   {defaultPrinter
                     ? `${defaultPrinter.name} (${defaultPrinter.paperWidth || "80mm"})`
                     : "Diálogo nativo del sistema (PDF / Impresoras del SO)"}
@@ -729,7 +715,7 @@ export function AjustesScreen({
 
         {/* Dynamic Category Management Card */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0">
                 <IconTag size={18} />
@@ -738,7 +724,7 @@ export function AjustesScreen({
                 <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
                   Categorías del Catálogo
                 </h3>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   {state.categories?.length || 0} categorías dinámicas configuradas
                 </p>
               </div>
@@ -775,7 +761,7 @@ export function AjustesScreen({
               <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
                 Plantillas Rápidas por Sector
               </h3>
-              <p className="text-[11px] text-slate-500 truncate">
+              <p className="text-[11px] text-slate-500 leading-snug break-words">
                 Carga inicial de categorías y parámetros según tu tipo de negocio
               </p>
             </div>
@@ -808,7 +794,7 @@ export function AjustesScreen({
 
         {/* Google Gemini AI Configuration Card (Optional & Decentralized) */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shrink-0">
                 <IconSparkles size={18} />
@@ -828,7 +814,7 @@ export function AjustesScreen({
                     {hasGeminiApiKey() ? "✅ Activa" : "⚪ Opcional"}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   Autocompletado de productos, analista de stock y redactor de ofertas
                 </p>
               </div>
@@ -877,7 +863,7 @@ export function AjustesScreen({
                 )}
               </div>
 
-              <div className={`flex justify-between gap-2 pt-1 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+              <div className={`flex justify-between gap-2 pt-1 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
                 <span className="text-[10.5px] text-slate-400">
                   Almacenada exclusivamente de forma local en tu dispositivo.
                 </span>
@@ -928,79 +914,12 @@ export function AjustesScreen({
           </div>
         </div>
 
-        {/* Currency & Exchange Rates Section */}
-        <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
-                <IconCoins size={18} />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-slate-900">
-                  Moneda & Tipos de Cambio
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Base principal: Pesos Cubanos (CUP)
-                </p>
-              </div>
-            </div>
-
-            {ratesSavedMsg && (
-              <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg animate-pop">
-                ✓ Guardado
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 USD en CUP
-              </label>
-              <input
-                type="number"
-                value={usdRate}
-                onChange={(e) => setUsdRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 EUR en CUP
-              </label>
-              <input
-                type="number"
-                value={eurRate}
-                onChange={(e) => setEurRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 MLC en CUP
-              </label>
-              <input
-                type="number"
-                value={mlcRate}
-                onChange={(e) => setMlcRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleSaveRates}
-            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition cursor-pointer"
-          >
-            Actualizar Tasas de Cambio
-          </button>
-        </div>
+        {/* Currency & Exchange Rates Section (manual or elTOQUE) */}
+        <ExchangeRatesCard />
 
         {/* Connectivity Mode Box */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${
@@ -1013,7 +932,7 @@ export function AjustesScreen({
                 <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
                   Modo de Conectividad
                 </h3>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   {isOffline ? "100% Offline (Sin dependencia de internet)" : "Online (Sincronización activa)"}
                 </p>
               </div>
@@ -1218,7 +1137,7 @@ export function AjustesScreen({
         {/* Quick Start Guide & Manual Card */}
         {onOpenQuickGuide && (
           <div className="card p-4 rounded-3xl border border-amber-300 bg-amber-50/70 space-y-3 shadow-xs">
-            <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+            <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-xs shrink-0">
                   <IconSparkles size={20} />
@@ -1302,7 +1221,7 @@ export function AjustesScreen({
 
         {/* Ambience & Visual Theme Selector (Dark Mode & Themes) */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3.5 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                 {isEffectiveDark ? "🌙" : "☀️"}
@@ -1436,7 +1355,7 @@ export function AjustesScreen({
 
         {/* Self-Hosted OTA & ZIP Updates Card */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                 🚀
@@ -1450,7 +1369,7 @@ export function AjustesScreen({
                     v{getOtaConfig().installedVersion}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   Actualización vía GitHub online o manual mediante archivo ZIP sin recompilar APK
                 </p>
               </div>
@@ -1475,7 +1394,7 @@ export function AjustesScreen({
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
               <button
-                onClick={() => downloadLatestZipDirectly("1.3.5")}
+                onClick={() => downloadLatestZipDirectly()}
                 className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
               >
                 <span>Descargar ZIP v1.3.5</span>
@@ -1550,7 +1469,7 @@ export function AjustesScreen({
 
         {/* Database & Automatic Daily Backup Card */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
                 <IconDownload size={18} />
@@ -1564,7 +1483,7 @@ export function AjustesScreen({
                     AUTOMÁTICO EN CIERRE Z
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 leading-snug break-words">
                   Exporta productos, inventario, ventas y almacén en archivos JSON locales
                 </p>
               </div>
@@ -1596,7 +1515,7 @@ export function AjustesScreen({
 
         {/* License & Device info */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold shrink-0">
                 <IconBolt size={18} />
@@ -1627,7 +1546,7 @@ export function AjustesScreen({
           {licenseAuditToast && (
             <div className="p-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-2 animate-pop">
               <IconCheck size={14} className="shrink-0" />
-              <span>Firma HMAC-SHA256 íntegra y válida para este dispositivo.</span>
+              <span>Firma digital Ed25519 verificada y válida para este dispositivo.</span>
             </div>
           )}
 
@@ -1659,10 +1578,15 @@ export function AjustesScreen({
               <span className="text-[10px] tracking-widest font-bold text-slate-500 uppercase">
                 CLAVE DE ACTIVACIÓN REGISTRADA
               </span>
-              <span className="text-[9.5px] font-bold text-emerald-700">HMAC-SHA256</span>
+              <span className="text-[9.5px] font-bold text-emerald-700">Firma Ed25519</span>
             </div>
-            <div className="font-mono text-xs font-black text-emerald-900 tracking-wider">
-              {licenseStatus.licenseKey || "A1B2-C3D4-E5F6"}
+            <div className="font-mono text-[10px] font-black text-emerald-900 tracking-wide break-all leading-relaxed">
+              {licenseStatus.licenseKey || "—"}
+            </div>
+            <div className="text-[10px] font-bold pt-0.5 text-slate-600">
+              {licenseStatus.expiresAt
+                ? `Válida hasta el ${formatLicenseExpiry(licenseStatus.expiresAt)} (inclusive)`
+                : "Licencia permanente (sin caducidad)"}
             </div>
             {licenseStatus.activatedAt && (
               <div className="text-[10px] text-slate-500 pt-0.5">

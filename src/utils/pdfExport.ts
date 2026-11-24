@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import type { Sale, DailyClosing, BusinessInfo, ExchangeRates, Product, Movement } from "../types";
 import type { IPVRow } from "./ipv";
-import { formatCurrency, roundCurrency, formatAccounting, formatQuantity } from "./currency";
+import { formatCurrency, roundCurrency, formatAccounting, formatQuantity, cashByCurrencyLines } from "./currency";
 import { sanitizeClosingData, auditReportData } from "./auditEngine";
 import {
   runIPVSentinel,
@@ -88,6 +88,10 @@ export function buildTicketPdfPayload(
   biz: BusinessInfo,
   rates: ExchangeRates
 ): { doc: jsPDF; blob: Blob; filename: string; payload: FileExportPayload } {
+  // Receipt in the currency the sale was charged in, with the rate of that moment
+  const saleCur = (sale as any).currency || "CUP";
+  const saleRates =
+    saleCur !== "CUP" && (sale as any).exchangeRate ? { ...rates, [saleCur]: (sale as any).exchangeRate } : rates;
   // 80mm thermal width equivalent in points (~226pt width, dynamic height)
   const estimatedHeight = Math.max(320, 220 + sale.items.length * 28);
   const doc = new jsPDF({
@@ -160,7 +164,7 @@ export function buildTicketPdfPayload(
     const nameText = cleanItemName.length > 24 ? cleanItemName.substring(0, 22) + "..." : cleanItemName;
     doc.text(nameText, 14, y);
 
-    const lineTotal = formatCurrency(item.qty * item.price, "CUP", rates);
+    const lineTotal = formatCurrency(item.qty * item.price, saleCur, saleRates);
     doc.text(lineTotal, pageWidth - 14, y, { align: "right" });
     y += 9;
 
@@ -168,7 +172,7 @@ export function buildTicketPdfPayload(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text(`${item.qty} ${item.unit || "u"} x ${formatCurrency(item.price, "CUP", rates)}`, 14, y);
+    doc.text(`${item.qty} ${item.unit || "u"} x ${formatCurrency(item.price, saleCur, saleRates)}`, 14, y);
     y += 11;
   });
 
@@ -182,13 +186,13 @@ export function buildTicketPdfPayload(
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text("Subtotal:", 14, y);
-  doc.text(formatCurrency(sale.subtotal || sale.total, "CUP", rates), pageWidth - 14, y, { align: "right" });
+  doc.text(formatCurrency(sale.subtotal || sale.total, saleCur, saleRates), pageWidth - 14, y, { align: "right" });
   y += 11;
 
   if (sale.discount > 0) {
     doc.setTextColor(225, 29, 72);
     doc.text("Descuento:", 14, y);
-    doc.text(`-${formatCurrency(sale.discount, "CUP", rates)}`, pageWidth - 14, y, { align: "right" });
+    doc.text(`-${formatCurrency(sale.discount, saleCur, saleRates)}`, pageWidth - 14, y, { align: "right" });
     y += 11;
   }
 
@@ -199,7 +203,7 @@ export function buildTicketPdfPayload(
   doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
   doc.text("TOTAL PAGADO:", 16, y + 10);
-  doc.text(formatCurrency(sale.total, "CUP", rates), pageWidth - 16, y + 10, { align: "right" });
+  doc.text(formatCurrency(sale.total, saleCur, saleRates), pageWidth - 16, y + 10, { align: "right" });
   y += 26;
 
   // Payment details
@@ -231,7 +235,7 @@ export function buildTicketPdfPayload(
   // Currency breakdown
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`Equiv: ${formatCurrency(sale.total, "USD", rates)} | ${formatCurrency(sale.total, "EUR", rates)}`, 14, y);
+  doc.text(saleCur !== "CUP" ? `Equiv: ${formatCurrency(sale.total, "CUP", saleRates)} (1 ${saleCur} = ${formatCurrency((saleRates as any)[saleCur] || 1, "CUP", saleRates)})` : `Equiv: ${formatCurrency(sale.total, "USD", rates)} | ${formatCurrency(sale.total, "EUR", rates)}`, 14, y);
   y += 14;
 
   // Footer message
@@ -390,6 +394,19 @@ export function buildZReportPdfPayload(
   }
 
   y += 128;
+
+  // Cash count by currency (only when something was charged in USD/EUR/MLC)
+  const byCurrency = cashByCurrencyLines(closing.cashByCurrency);
+  if (byCurrency.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text("ARQUEO POR MONEDA", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    byCurrency.forEach((l, i) => doc.text(l, 40, y + 13 + i * 12));
+    y += 20 + byCurrency.length * 12;
+  }
 
   // SECTION 2: BALANCE FÍSICO DE INVENTARIO
   doc.setFillColor(248, 250, 252);
@@ -1094,7 +1111,7 @@ export function buildIPVReportPdfPayload(
 
   const sigItems = [
     { title: sanitizeTextForPdf(settings.signature1 || "Conformado por (Dependiente)", 34), sub: "Firma y Cuño" },
-    { title: `Arqueo: CUP $ ${formatAccounting(auditedTotals.importeVendido)}`, sub: "Verificado Conforme (100% Cuadre)" },
+    { title: `Arqueo: CUP ${formatAccounting(auditedTotals.importeVendido)}`, sub: "Verificado Conforme (100% Cuadre)" },
     { title: sanitizeTextForPdf(settings.signature3 || "Aprobado por (Administrador)", 34), sub: "Cuño Oficial de Administración" },
   ];
 
@@ -1200,12 +1217,12 @@ export function buildInventoryPdfPayload(
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text(`Unidades en Stock: ${formatQuantity(catalogAudit.totalUnits)}`, 50, y + 18);
-  doc.text(`Inversión: CUP $ ${formatAccounting(catalogAudit.totalCostVal)}`, 220, y + 18);
-  doc.text(`Valoración Venta: CUP $ ${formatAccounting(catalogAudit.totalSaleVal)}`, 400, y + 18);
+  doc.text(`Inversión: CUP ${formatAccounting(catalogAudit.totalCostVal)}`, 220, y + 18);
+  doc.text(`Valoración Venta: CUP ${formatAccounting(catalogAudit.totalSaleVal)}`, 400, y + 18);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Margen Potencial: CUP $ ${formatAccounting(catalogAudit.potentialProfit)} (${catalogAudit.averageMargin.toFixed(1)}%)`, 50, y + 30);
+  doc.text(`Margen Potencial: CUP ${formatAccounting(catalogAudit.potentialProfit)} (${catalogAudit.averageMargin.toFixed(1)}%)`, 50, y + 30);
 
   y += 52;
 

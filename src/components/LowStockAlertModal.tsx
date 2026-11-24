@@ -425,7 +425,7 @@ function CriticalProductCard({
         </div>
 
         <div className="text-[11px] text-slate-500 font-medium">
-          Umbral: ≤ {product.lowStockAlert} {product.unit} • {formatCurrency(product.price, "CUP", state.rates)}
+          Umbral: ≤ {product.lowStockAlert} {product.unit} • {formatCurrency(product.price, state.selectedCurrency, state.rates)}
         </div>
       </div>
 

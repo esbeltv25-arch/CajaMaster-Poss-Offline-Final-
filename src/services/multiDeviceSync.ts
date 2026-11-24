@@ -44,6 +44,26 @@ export interface SyncStats {
 
 type EventCallback<T = any> = (data: T) => void;
 
+function normalizeRole(value: unknown): DeviceRole | null {
+  const v = String(value || "").toLowerCase().trim();
+  if (!v) return null;
+  if (["primary", "host", "server", "master", "caja", "central"].includes(v)) return "primary";
+  if (["secondary", "client", "waiter", "camarero", "terminal", "comandero", "slave"].includes(v)) return "secondary";
+  return null;
+}
+
+function normalizeMode(value: unknown): SyncConnectionMode | null {
+  const v = String(value || "").toLowerCase().trim();
+  if (v === "local" || v === "wifi" || v === "lan") return "local";
+  if (v === "cloud" || v === "internet" || v === "online") return "cloud";
+  return null;
+}
+
+function isLanHost(host: string): boolean {
+  const h = host.replace(/^\w+:\/\//, "").split(/[:/]/)[0];
+  return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h) || h.endsWith(".local");
+}
+
 class MultiDeviceSyncService {
   private config: SyncConfig;
   private status: SyncConnectionStatus = "disconnected";
@@ -62,6 +82,9 @@ class MultiDeviceSyncService {
   private heartbeatTimer: any = null;
   private cleanupTimer: any = null;
   private reconnectAttempts = 0;
+  private peerRetryTimer: any = null;
+  // Incremented on every disconnect(): async callbacks from an old session are ignored
+  private sessionGen = 0;
   
   // Message deduplication
   private processedMsgIds = new Set<string>();
@@ -84,6 +107,7 @@ class MultiDeviceSyncService {
     remoteSale: new Set<EventCallback<{ sale: Sale; senderName: string }>>(),
     remoteStock: new Set<EventCallback<{ productId: string; stock: number; senderName: string }>>(),
     remoteProduct: new Set<EventCallback<{ product: Product; senderName: string }>>(),
+    remoteProductDelete: new Set<EventCallback<{ productId: string; senderName: string }>>(),
     remoteCategories: new Set<EventCallback<{ categories: Category[]; senderName: string }>>(),
     remoteSnapshot: new Set<EventCallback<{ state: AppState; senderName: string }>>(),
     stateRequested: new Set<EventCallback<{ requesterId: string; requesterName: string }>>(),
@@ -204,7 +228,7 @@ class MultiDeviceSyncService {
     try {
       const params = new URLSearchParams(window.location.search);
       const syncRoom = params.get("syncRoom") || params.get("roomKey") || params.get("room");
-      const syncRole = (params.get("syncRole") || params.get("role")) as DeviceRole | null;
+      const syncRole = normalizeRole(params.get("syncRole") || params.get("role"));
       const syncHost = params.get("syncHost") || params.get("serverHost") || params.get("host");
       const syncName = params.get("syncName") || params.get("deviceName");
       const syncMode = (params.get("syncMode") || params.get("mode")) as SyncConnectionMode | null;
@@ -216,7 +240,8 @@ class MultiDeviceSyncService {
         };
         if (syncRole) update.role = syncRole;
         if (syncHost) update.serverHost = syncHost;
-        if (syncMode) update.connectionMode = syncMode;
+        const normalizedMode = normalizeMode(syncMode);
+        if (normalizedMode) update.connectionMode = normalizedMode;
         if (syncName) update.deviceName = syncName;
         else if (syncRole === "secondary" && (this.config.deviceName === "Caja Central" || !this.config.deviceName)) {
           update.deviceName = "Comandero " + Math.floor(1 + Math.random() * 9);
@@ -264,15 +289,26 @@ class MultiDeviceSyncService {
   }
 
   public disconnect() {
+    this.sessionGen++;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    if (this.peerRetryTimer) clearTimeout(this.peerRetryTimer);
+    this.reconnectTimer = null;
+    this.heartbeatTimer = null;
+    this.peerRetryTimer = null;
 
-    // 1. Close local WebSocket
+    // 1. Close local WebSocket (detach handlers first so its async "close"
+    //    event does not schedule a duplicate reconnection)
     if (this.ws) {
-      try {
-        this.ws.close();
-      } catch (e) {}
+      const oldWs = this.ws;
       this.ws = null;
+      oldWs.onopen = null;
+      oldWs.onmessage = null;
+      oldWs.onerror = null;
+      oldWs.onclose = null;
+      try {
+        oldWs.close();
+      } catch (e) {}
     }
     this.stats.wsConnected = false;
 
@@ -335,11 +371,28 @@ class MultiDeviceSyncService {
   // ----------------------------------------------------
   // TRANSPORT 1: WEBRTC P2P (PeerJS)
   // ----------------------------------------------------
+  private schedulePeerRetry(gen: number, delayMs = 5000) {
+    if (this.peerRetryTimer) clearTimeout(this.peerRetryTimer);
+    this.peerRetryTimer = setTimeout(() => {
+      this.peerRetryTimer = null;
+      if (gen !== this.sessionGen || !this.config.enabled || this.config.connectionMode !== "cloud") return;
+      if (this.peer) {
+        try {
+          this.peer.destroy();
+        } catch {}
+        this.peer = null;
+      }
+      this.connectCloudWebRtc();
+    }, delayMs);
+  }
+
   private connectCloudWebRtc() {
     if (typeof window === "undefined") return;
+    const gen = this.sessionGen;
     try {
       const sanitizedRoom = this.config.roomKey.toLowerCase().replace(/[^a-z0-9]/g, "");
       const isPrimary = this.config.role === "primary";
+      const hostPeerId = `cajamaster-room-${sanitizedRoom}`;
 
       // STUN configuration for NAT traversal
       const peerOptions = {
@@ -356,42 +409,72 @@ class MultiDeviceSyncService {
 
       if (isPrimary) {
         // Primary Host / Caja Central uses a predictable room peer ID
-        const hostPeerId = `cajamaster-room-${sanitizedRoom}`;
-        this.peer = new Peer(hostPeerId, peerOptions);
+        const peer = new Peer(hostPeerId, peerOptions);
+        this.peer = peer;
 
-        this.peer.on("open", (id) => {
+        peer.on("open", (id) => {
+          if (gen !== this.sessionGen) return;
           console.log("[SYNC-PEER] Host abierto con ID:", id);
           this.stats.connectedAt = Date.now();
           this.setStatus("connected");
         });
 
-        this.peer.on("connection", (conn) => {
+        peer.on("connection", (conn) => {
+          if (gen !== this.sessionGen) return;
           console.log("[SYNC-PEER] Conexión entrante de terminal:", conn.peer);
           this.setupPeerDataConnection(conn);
         });
 
-        this.peer.on("error", (err: any) => {
+        peer.on("disconnected", () => {
+          // Lost the signalling server: try to re-register the same ID
+          if (gen !== this.sessionGen || peer.destroyed) return;
+          try {
+            peer.reconnect();
+          } catch {}
+        });
+
+        peer.on("error", (err: any) => {
+          if (gen !== this.sessionGen) return;
           console.warn("[SYNC-PEER] Host peer error:", err?.type || err?.message);
-          // If ID is already taken by a recent session or reload, connect client-side or wait
-          if (err?.type === "unavailable-id") {
-            console.log("[SYNC-PEER] El ID del host ya está registrado. Conectando como peer dinámico.");
+          // "unavailable-id": the previous session of this host (e.g. after an app
+          // restart) is still registered on the PeerJS server. It expires in a few
+          // seconds, so retry instead of giving up on P2P for the whole session.
+          if (err?.type === "unavailable-id" || err?.type === "network" || err?.type === "server-error" || err?.type === "socket-error") {
+            this.schedulePeerRetry(gen, 6000);
           }
         });
       } else {
         // Secondary terminal / Camarero / Móvil generates a unique peer ID and connects to Host
-        const clientPeerId = `cm-cli-${getDeviceId().slice(0, 6)}-${Math.floor(Math.random() * 10000)}`;
-        this.peer = new Peer(clientPeerId, peerOptions);
+        const clientPeerId = `cm-cli-${getDeviceId().slice(0, 6)}-${Math.floor(Math.random() * 100000)}`;
+        const peer = new Peer(clientPeerId, peerOptions);
+        this.peer = peer;
 
-        this.peer.on("open", () => {
-          const hostPeerId = `cajamaster-room-${sanitizedRoom}`;
+        peer.on("open", () => {
+          if (gen !== this.sessionGen) return;
           console.log("[SYNC-PEER] Cliente abierto. Conectando con Host:", hostPeerId);
-          const conn = this.peer!.connect(hostPeerId, { reliable: true });
+          const conn = peer.connect(hostPeerId, { reliable: true });
           this.hostConnection = conn;
           this.setupPeerDataConnection(conn);
+          // If the data channel does not open (host offline / NAT), retry later
+          setTimeout(() => {
+            if (gen === this.sessionGen && this.hostConnection === conn && !conn.open) {
+              this.schedulePeerRetry(gen, 1000);
+            }
+          }, 12000);
         });
 
-        this.peer.on("error", (err) => {
-          console.warn("[SYNC-PEER] Client peer issue:", err);
+        peer.on("disconnected", () => {
+          if (gen !== this.sessionGen || peer.destroyed) return;
+          try {
+            peer.reconnect();
+          } catch {}
+        });
+
+        peer.on("error", (err: any) => {
+          if (gen !== this.sessionGen) return;
+          console.warn("[SYNC-PEER] Client peer issue:", err?.type || err);
+          // "peer-unavailable": the Caja Central is not online yet -> keep retrying
+          this.schedulePeerRetry(gen, 5000);
         });
       }
     } catch (e) {
@@ -440,6 +523,9 @@ class MultiDeviceSyncService {
       }
       this.stats.p2pPeersCount = this.peerConnections.size;
       this.notifyDevices();
+      if (this.config.role === "secondary" && this.config.connectionMode === "cloud" && this.config.enabled) {
+        this.schedulePeerRetry(this.sessionGen, 4000);
+      }
     });
 
     conn.on("error", (err) => {
@@ -551,9 +637,14 @@ class MultiDeviceSyncService {
         return "ws://127.0.0.1:8787";
       }
       if (this.config.serverHost) {
-        let clean = this.config.serverHost.replace(/^https?:\/\//, "").replace(/^wss?:\/\//, "");
+        let clean = this.config.serverHost
+          .replace(/^https?:\/\//, "")
+          .replace(/^wss?:\/\//, "")
+          .replace(/\/.*$/, "")
+          .trim();
         if (!clean.includes(":")) clean += ":8787";
-        return `ws://${clean}`;
+        // The Android relay accepts any path; the Node server needs /api/sync/ws
+        return `ws://${clean}/api/sync/ws`;
       }
       return "ws://127.0.0.1:8787";
     }
@@ -569,21 +660,29 @@ class MultiDeviceSyncService {
   }
 
   private async connectLocalWebSocket() {
+    const gen = this.sessionGen;
     if (isNativePlatform() && this.config.role === "primary") {
       try {
+        // Idempotent on the native side: an already running relay is kept,
+        // so connected terminals are not dropped on reconnects.
         await startSyncServer(8787);
       } catch (err) {
         console.warn("[SYNC] Could not start native sync server:", err);
+        this.emitToast("No se pudo iniciar el servidor local (puerto 8787). Reintentando...", "warning");
       }
     }
 
     const wsUrl = this.getWebSocketUrl();
     if (!wsUrl) return;
 
-    try {
-      this.ws = new WebSocket(wsUrl);
+    if (gen !== this.sessionGen) return;
 
-      this.ws.onopen = () => {
+    try {
+      const socket = new WebSocket(wsUrl);
+      this.ws = socket;
+
+      socket.onopen = () => {
+        if (this.ws !== socket) return;
         this.reconnectAttempts = 0;
         this.stats.wsConnected = true;
         this.stats.connectedAt = Date.now();
@@ -609,7 +708,8 @@ class MultiDeviceSyncService {
         }
       };
 
-      this.ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
+        if (this.ws !== socket) return;
         try {
           const msg = JSON.parse(event.data);
           this.stats.packetsReceived++;
@@ -620,7 +720,8 @@ class MultiDeviceSyncService {
         }
       };
 
-      this.ws.onclose = () => {
+      socket.onclose = () => {
+        if (this.ws !== socket) return;
         this.stats.wsConnected = false;
         if (this.config.connectionMode === "local") {
           this.setStatus("disconnected");
@@ -628,7 +729,8 @@ class MultiDeviceSyncService {
         }
       };
 
-      this.ws.onerror = (err) => {
+      socket.onerror = (err) => {
+        if (this.ws !== socket) return;
         console.warn("[SYNC] WebSocket connection issue:", err);
         if (this.config.connectionMode === "local") {
           this.setStatus("error");
@@ -662,7 +764,10 @@ class MultiDeviceSyncService {
     this.stats.reconnectAttempts = this.reconnectAttempts;
 
     const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 12000);
+    const gen = this.sessionGen;
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (gen !== this.sessionGen) return;
       this.connect();
     }, delay);
   }
@@ -825,6 +930,10 @@ class MultiDeviceSyncService {
 
       case "state:init":
       case "state:snapshot": {
+        // The full state only flows Caja Central -> terminals. A terminal that
+        // resets or restores a backup must not overwrite the Caja Central.
+        if (this.config.role === "primary") break;
+        if (senderRole && senderRole !== "primary") break;
         if (msg.state) {
           this.listeners.remoteSnapshot.forEach((cb) =>
             cb({ state: msg.state, senderName: senderName || "Terminal Central" })
@@ -887,6 +996,15 @@ class MultiDeviceSyncService {
         if (msg.product) {
           this.listeners.remoteProduct.forEach((cb) =>
             cb({ product: msg.product, senderName: senderName || "Terminal" })
+          );
+        }
+        break;
+      }
+
+      case "product:delete": {
+        if (msg.productId) {
+          this.listeners.remoteProductDelete.forEach((cb) =>
+            cb({ productId: msg.productId, senderName: senderName || "Terminal" })
           );
         }
         break;
@@ -989,6 +1107,13 @@ class MultiDeviceSyncService {
     });
   }
 
+  public broadcastProductDelete(productId: string) {
+    this.broadcastToAll({
+      type: "product:delete",
+      productId,
+    });
+  }
+
   public broadcastCategoriesUpdate(categories: Category[]) {
     this.broadcastToAll({
       type: "category:update",
@@ -1059,6 +1184,11 @@ class MultiDeviceSyncService {
   public onRemoteProduct(cb: EventCallback<{ product: Product; senderName: string }>): () => void {
     this.listeners.remoteProduct.add(cb);
     return () => this.listeners.remoteProduct.delete(cb);
+  }
+
+  public onRemoteProductDelete(cb: EventCallback<{ productId: string; senderName: string }>): () => void {
+    this.listeners.remoteProductDelete.add(cb);
+    return () => this.listeners.remoteProductDelete.delete(cb);
   }
 
   public onRemoteCategories(cb: EventCallback<{ categories: Category[]; senderName: string }>): () => void {
@@ -1177,6 +1307,7 @@ class MultiDeviceSyncService {
     let serverHost: string | undefined = undefined;
     let deviceName: string | undefined = undefined;
     let connectionMode: SyncConnectionMode = "cloud"; // Default to cloud for universal cross-device pairing
+    let modeExplicit = false;
 
     try {
       // 1. Try URL parsing
@@ -1197,17 +1328,19 @@ class MultiDeviceSyncService {
         const params = new URLSearchParams(queryString);
         const parsedRoom = params.get("syncRoom") || params.get("roomKey") || params.get("room");
         if (parsedRoom) roomKey = parsedRoom;
-        const parsedRole = params.get("syncRole") || params.get("role");
-        if (parsedRole === "primary" || parsedRole === "secondary") role = parsedRole;
+        const parsedRole = normalizeRole(params.get("syncRole") || params.get("role"));
+        if (parsedRole) role = parsedRole;
         const parsedHost = params.get("syncHost") || params.get("serverHost") || params.get("host");
         if (parsedHost) serverHost = parsedHost;
         const parsedName = params.get("syncName") || params.get("deviceName");
         if (parsedName) deviceName = parsedName;
-        const parsedMode = params.get("syncMode") || params.get("mode");
-        if (parsedMode === "local" || parsedMode === "cloud") {
+        const parsedMode = normalizeMode(params.get("syncMode") || params.get("mode"));
+        if (parsedMode) {
           connectionMode = parsedMode;
-        } else if (serverHost && (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(serverHost) || serverHost.includes("localhost"))) {
+          modeExplicit = true;
+        } else if (serverHost && isLanHost(serverHost)) {
           connectionMode = "local";
+          modeExplicit = true;
         }
       }
 
@@ -1216,13 +1349,21 @@ class MultiDeviceSyncService {
         try {
           const parsed = JSON.parse(trimmed);
           if (parsed.roomKey || parsed.room || parsed.syncRoom) {
-            roomKey = parsed.roomKey || parsed.room || parsed.syncRoom;
-            if (parsed.role) role = parsed.role;
+            roomKey = String(parsed.roomKey || parsed.room || parsed.syncRoom);
+            const r = normalizeRole(parsed.role || parsed.syncRole);
+            if (r) role = r;
             if (parsed.serverHost || parsed.syncHost || parsed.host) {
-              serverHost = parsed.serverHost || parsed.syncHost || parsed.host;
+              serverHost = String(parsed.serverHost || parsed.syncHost || parsed.host);
             }
             if (parsed.deviceName || parsed.name) deviceName = parsed.deviceName || parsed.name;
-            if (parsed.connectionMode || parsed.mode) connectionMode = parsed.connectionMode || parsed.mode;
+            const m = normalizeMode(parsed.connectionMode || parsed.mode || parsed.syncMode);
+            if (m) {
+              connectionMode = m;
+              modeExplicit = true;
+            } else if (serverHost && isLanHost(serverHost)) {
+              connectionMode = "local";
+              modeExplicit = true;
+            }
           }
         } catch {
           // not json
@@ -1230,6 +1371,17 @@ class MultiDeviceSyncService {
       }
 
       // 3. Fallback: Check if it's a plain room key like "CM-1234"
+      if (!roomKey) {
+        // "CM-1234@192.168.1.10" or "CM-1234 192.168.1.10[:8787]" -> local Wi-Fi pairing
+        const pinWithIp = trimmed.match(/^([a-zA-Z0-9_-]{3,16})\s*[@\s]\s*(\d{1,3}(?:\.\d{1,3}){3}(?::\d{2,5})?)$/);
+        if (pinWithIp) {
+          roomKey = pinWithIp[1];
+          serverHost = pinWithIp[2].includes(":") ? pinWithIp[2] : `${pinWithIp[2]}:8787`;
+          connectionMode = "local";
+          modeExplicit = true;
+        }
+      }
+
       if (!roomKey) {
         if (/^CM-\d{3,6}$/i.test(trimmed)) {
           roomKey = trimmed.toUpperCase();
@@ -1250,6 +1402,25 @@ class MultiDeviceSyncService {
 
       roomKey = roomKey.toUpperCase().trim();
 
+      // A bare PIN does not say which network to use: keep this device's current
+      // mode (and its saved Caja Central IP) instead of silently switching to cloud.
+      if (!modeExplicit && !serverHost) {
+        connectionMode = this.config.connectionMode;
+        if (connectionMode === "local") serverHost = this.config.serverHost;
+      }
+
+      // Local Wi-Fi pairing needs the real LAN IP of the Caja Central.
+      if (connectionMode === "local") {
+        const hostOnly = (serverHost || "").replace(/^\w+:\/\//, "").split(/[:/]/)[0].toLowerCase();
+        if (!hostOnly || hostOnly === "localhost" || hostOnly === "127.0.0.1" || hostOnly === "0.0.0.0") {
+          return {
+            success: false,
+            message:
+              "Falta la IP de la Caja Central para el modo Wi-Fi local. Conecta la Caja Central a la red Wi-Fi (o activa su hotspot) y regenera el QR, o escribe el PIN con la IP así: CM-1234@192.168.1.10",
+          };
+        }
+      }
+
       // Determine default name for secondary
       if (!deviceName) {
         if (role === "secondary" && (this.config.deviceName === "Caja Central" || !this.config.deviceName)) {
@@ -1263,6 +1434,8 @@ class MultiDeviceSyncService {
         enabled: true,
         roomKey,
         role,
+        // Clear a stale host from a previous local pairing when joining via cloud
+        ...(connectionMode === "cloud" && !serverHost ? { serverHost: undefined } : {}),
         deviceName,
         connectionMode,
       };

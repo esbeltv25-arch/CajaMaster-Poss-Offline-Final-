@@ -117,7 +117,7 @@ export function DeliveryDriversTab({
             </span>
           </div>
           <p className="text-sm sm:text-base font-black text-slate-900 truncate">
-            {formatCurrency(totalFeesPaid, "CUP", state.rates)}
+            {formatCurrency(totalFeesPaid, state.selectedCurrency, state.rates)}
           </p>
         </div>
       </div>
@@ -230,7 +230,7 @@ export function DeliveryDriversTab({
                     <div>
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Comisiones</p>
                       <p className="text-xs font-black text-amber-700">
-                        {formatCurrency(driver.totalFeesEarned + (driver.totalTipsEarned || 0), "CUP", state.rates)}
+                        {formatCurrency(driver.totalFeesEarned + (driver.totalTipsEarned || 0), state.selectedCurrency, state.rates)}
                       </p>
                     </div>
                   </div>
@@ -319,7 +319,7 @@ export function DeliveryDriversTab({
         title="¿Liquidar Comisiones?"
         message={`¿Liquidar y reiniciar el balance acumulado de ${driverToLiquidate?.name}? (${formatCurrency(
           (driverToLiquidate?.totalFeesEarned || 0) + (driverToLiquidate?.totalTipsEarned || 0),
-          "CUP",
+          state.selectedCurrency,
           state.rates
         )})`}
         confirmText="Liquidar y Reiniciar"

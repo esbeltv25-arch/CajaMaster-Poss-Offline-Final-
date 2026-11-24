@@ -337,10 +337,10 @@ export function InventarioScreen({
                   VALORACIÓN TOTAL DE STOCK
                 </div>
                 <div className="text-lg font-extrabold text-amber-400">
-                  {formatCurrency(totalValuationSale, "CUP", state.rates)}
+                  {formatCurrency(totalValuationSale, state.selectedCurrency, state.rates)}
                 </div>
                 <div className="text-[11px] text-slate-300">
-                  Costo de inversión: {formatCurrency(totalValuationCost, "CUP", state.rates)}
+                  Costo de inversión: {formatCurrency(totalValuationCost, state.selectedCurrency, state.rates)}
                 </div>
               </div>
 
@@ -676,12 +676,12 @@ function ProductRow({ p, state, onEdit, onDelete, onQuickMovement }: ProductRowP
               {p.name}
             </h4>
             <div className="text-[10.5px] sm:text-[11px] text-slate-500 font-medium truncate">
-              {p.category} • Costo: {formatCurrency(p.cost, "CUP", state.rates)}
+              {p.category} • Costo: {formatCurrency(p.cost, state.selectedCurrency, state.rates)}
             </div>
           </div>
 
           <span className="text-[11px] sm:text-xs font-extrabold bg-amber-100 text-slate-950 px-1.5 sm:px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0">
-            {formatCurrency(p.price, "CUP", state.rates)}
+            {formatCurrency(p.price, state.selectedCurrency, state.rates)}
           </span>
         </div>
 

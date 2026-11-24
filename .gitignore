@@ -12,3 +12,6 @@ coverage/
 .env*
 !.env.example
 
+
+# Clave PRIVADA de licencias: nunca subir a GitHub
+.license/

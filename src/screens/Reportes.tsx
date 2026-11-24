@@ -602,7 +602,7 @@ export function ReportesScreen() {
       <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 text-slate-900">
         {/* Period Selector Controls (Hidden on print) */}
         <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 print:hidden shadow-xs">
-          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+          <div className={`flex justify-between gap-2.5 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
             <div className="flex items-center gap-2 min-w-0">
               <IconCalendar size={18} className="text-slate-800 shrink-0" />
               <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700 truncate">
@@ -1217,7 +1217,7 @@ export function ReportesScreen() {
         <div className="rounded-3xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm print:border-none print:shadow-none print:p-0 space-y-4">
           {/* Printable Header with Interactive Edit Button */}
           <div className="relative border-b border-slate-300 pb-4">
-            <div className={`flex justify-between gap-3 ${isPhone ? "flex-col items-start" : "flex-col sm:flex-row sm:items-center"}`}>
+            <div className={`flex justify-between gap-3 ${isPhone ? "flex-col items-stretch" : "flex-col sm:flex-row sm:items-center"}`}>
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h2 className="font-extrabold text-base md:text-xl uppercase tracking-tight text-slate-950 truncate">
@@ -1600,7 +1600,7 @@ export function ReportesScreen() {
             </div>
             <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100 print:bg-transparent print:border-none">
               <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">
-                Arqueo: CUP $ {formatAccounting(totals.importeVendido)}
+                Arqueo: CUP {formatAccounting(totals.importeVendido)}
               </div>
               <div className="text-[10px] text-slate-500">Verificado conforme (100% Cuadre)</div>
             </div>
@@ -1633,7 +1633,7 @@ export function ReportesScreen() {
                   <h3 className="font-extrabold text-sm text-slate-900 truncate">
                     Personalizar Encabezado IPVE
                   </h3>
-                  <p className="text-[11px] text-slate-500 truncate">
+                  <p className="text-[11px] text-slate-500 leading-snug break-words">
                     Edita el nombre del establecimiento, títulos oficiales y firmas
                   </p>
                 </div>

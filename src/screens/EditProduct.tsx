@@ -413,7 +413,7 @@ export function EditProductScreen({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="PRECIO DE VENTA (CUP) *" hint="Precio público">
             <div className="flex items-center px-4 h-12 gap-1.5">
-              <span className="text-slate-400 font-bold text-sm">$</span>
+              <span className="text-slate-400 font-bold text-xs">CUP</span>
               <input
                 type="number"
                 min="0"
@@ -428,7 +428,7 @@ export function EditProductScreen({
 
           <Field label="COSTO DE COMPRA (CUP)" hint="Para balance de ganancias">
             <div className="flex items-center px-4 h-12 gap-1.5">
-              <span className="text-slate-400 font-bold text-sm">$</span>
+              <span className="text-slate-400 font-bold text-xs">CUP</span>
               <input
                 type="number"
                 min="0"
@@ -450,7 +450,7 @@ export function EditProductScreen({
                 Margen & Ganancia Unitaria
               </span>
               <div className="text-xs font-bold text-slate-200">
-                Ganancia neta: <span className="text-emerald-400 font-extrabold">${profit.toFixed(2)} CUP</span>
+                Ganancia neta: <span className="text-emerald-400 font-extrabold">CUP {profit.toFixed(2)}</span>
               </div>
             </div>
             <div className="text-right">

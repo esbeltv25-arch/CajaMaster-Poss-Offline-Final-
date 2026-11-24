@@ -22,7 +22,7 @@ import {
   IconAlert,
   IconBolt,
 } from "../components/Icons";
-import { formatCurrency } from "../utils/currency";
+import { formatCurrency, roundCurrency, QUICK_BILLS } from "../utils/currency";
 import { ReceiptModal } from "../components/ReceiptModal";
 import { CategorySlider } from "../components/CategorySlider";
 import { useTheme } from "../themeContext";
@@ -35,7 +35,6 @@ import {
 } from "../services/paymentGateways";
 import { syncSalesWithBackend, pollPendingGatewaySales } from "../services/syncService";
 
-const QUICK_CASH_AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
 
 const CART_SESSION_KEY = "cajamaster_cart_session_v1";
 
@@ -219,8 +218,12 @@ export function CajaScreen({
   }, [state.products, selectedCategory, search]);
 
   const totalCUP = ticket.total;
-  const numPaid = typeof cashPaid === "number" ? cashPaid : (cashPaid === "" ? totalCUP : 0);
-  const changeDue = Math.max(0, (typeof cashPaid === "number" ? cashPaid : totalCUP) - totalCUP);
+  // The cashier types cash in the selected currency; sales are stored in CUP
+  const payCurrency = state.selectedCurrency;
+  const payRate = payCurrency === "CUP" ? 1 : state.rates[payCurrency] || 1;
+  // Half a cent of the selected currency: cent rounding must not look like a shortfall
+  const payToleranceCUP = payCurrency === "CUP" ? 0.001 : payRate * 0.005 + 0.001;
+  const typedCashCUP = typeof cashPaid === "number" && cashPaid > 0 ? roundCurrency(cashPaid * payRate) : 0;
 
   const handleFinishSale = (
     customMethod?: PaymentMethod,
@@ -238,12 +241,29 @@ export function CajaScreen({
 
     try {
       const method = customMethod || paymentMethod;
+      // Cash received lower than the total: do not register the sale as paid
+      if (
+        method === "cash" &&
+        customCash === undefined &&
+        typedCashCUP > 0 &&
+        typedCashCUP < ticket.total - payToleranceCUP
+      ) {
+        return;
+      }
+      // customCash is already in CUP (e.g. "Rápido" = exact total)
       const finalCash =
         method === "cash"
           ? (customCash !== undefined
               ? customCash
-              : (typeof cashPaid === "number" && cashPaid > 0 ? cashPaid : ticket.total))
-          : undefined;
+              : typedCashCUP > 0 && typedCashCUP > ticket.total + payToleranceCUP
+                ? typedCashCUP
+                : ticket.total) // empty or exact (within cent rounding) = exact payment
+          : method === "mixed"
+            ? // Mixed: the typed amount is the part paid in cash; the rest is digital
+              (customCash !== undefined
+                ? customCash
+                : typedCashCUP > 0 ? Math.min(typedCashCUP, ticket.total) : undefined)
+            : undefined;
 
       const finalChange =
         method === "cash" && finalCash && finalCash > totalCUP
@@ -268,6 +288,7 @@ export function CajaScreen({
         cashPaid: finalCash,
         change: finalChange,
         currency: state.selectedCurrency,
+        exchangeRate: payRate,
         notes: ticket.notes || undefined,
       });
 
@@ -379,13 +400,13 @@ export function CajaScreen({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setCashPaid(ticket.total);
+                  setCashPaid("");
                   setIsCheckoutOpen(true);
                 }}
                 onTouchEnd={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setCashPaid(ticket.total);
+                  setCashPaid("");
                   setIsCheckoutOpen(true);
                 }}
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl neu-sm text-[var(--color-ink)] flex items-center justify-center transition cursor-pointer hover:scale-105 active:scale-95 relative select-none"
@@ -681,11 +702,11 @@ export function CajaScreen({
                                     {/* Price Row */}
                                     <div className="mt-1 pt-1 border-t border-slate-100 flex items-baseline justify-between gap-1">
                                       <span className="font-black text-xs sm:text-sm text-slate-950">
-                                        {formatCurrency(p.price, "CUP", state.rates)}
+                                        {formatCurrency(p.price, state.selectedCurrency, state.rates)}
                                       </span>
                                       {state.selectedCurrency !== "CUP" && (
                                         <span className="text-[8px] sm:text-[9px] font-bold text-amber-700 truncate">
-                                          {formatCurrency(p.price, state.selectedCurrency, state.rates)}
+                                          ≈ {formatCurrency(p.price, "CUP", state.rates)}
                                         </span>
                                       )}
                                     </div>
@@ -801,11 +822,11 @@ export function CajaScreen({
                               {/* Price Row */}
                               <div className="mt-1 pt-1 border-t border-slate-100 flex items-baseline justify-between gap-1">
                                 <span className="font-black text-xs sm:text-sm text-slate-950">
-                                  {formatCurrency(p.price, "CUP", state.rates)}
+                                  {formatCurrency(p.price, state.selectedCurrency, state.rates)}
                                 </span>
                                 {state.selectedCurrency !== "CUP" && (
                                   <span className="text-[8px] sm:text-[9px] font-bold text-amber-700 truncate">
-                                    {formatCurrency(p.price, state.selectedCurrency, state.rates)}
+                                    ≈ {formatCurrency(p.price, "CUP", state.rates)}
                                   </span>
                                 )}
                               </div>
@@ -913,11 +934,11 @@ export function CajaScreen({
                         {/* Price Row */}
                         <div className="mt-1 pt-1 border-t border-slate-100 flex items-baseline justify-between gap-1">
                           <span className="font-black text-xs sm:text-sm text-slate-950">
-                            {formatCurrency(p.price, "CUP", state.rates)}
+                            {formatCurrency(p.price, state.selectedCurrency, state.rates)}
                           </span>
                           {state.selectedCurrency !== "CUP" && (
                             <span className="text-[8px] sm:text-[9px] font-bold text-amber-700 truncate">
-                              {formatCurrency(p.price, state.selectedCurrency, state.rates)}
+                              ≈ {formatCurrency(p.price, "CUP", state.rates)}
                             </span>
                           )}
                         </div>
@@ -1001,11 +1022,11 @@ export function CajaScreen({
                       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <div className="text-right">
                           <div className="font-black text-xs sm:text-sm text-slate-950 leading-tight">
-                            {formatCurrency(p.price, "CUP", state.rates)}
+                            {formatCurrency(p.price, state.selectedCurrency, state.rates)}
                           </div>
                           {state.selectedCurrency !== "CUP" && (
                             <div className="text-[8.5px] font-bold text-amber-700">
-                              {formatCurrency(p.price, state.selectedCurrency, state.rates)}
+                              ≈ {formatCurrency(p.price, "CUP", state.rates)}
                             </div>
                           )}
                         </div>
@@ -1119,13 +1140,13 @@ export function CajaScreen({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCashPaid(ticket.total);
+              setCashPaid("");
               setIsCheckoutOpen(true);
             }}
             onTouchEnd={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCashPaid(ticket.total);
+              setCashPaid("");
               setIsCheckoutOpen(true);
             }}
             className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition cursor-pointer shadow-2xl border select-none ${
@@ -1152,7 +1173,7 @@ export function CajaScreen({
               {totalItemCount > 0 ? (
                 <>
                   <span className="font-black text-xs text-amber-300">
-                    {formatCurrency(ticket.total, "CUP", state.rates)}
+                    {formatCurrency(ticket.total, state.selectedCurrency, state.rates)}
                   </span>
                   <span className="text-[9px] font-extrabold text-slate-300 uppercase tracking-wider mt-0.5">
                     Cobrar ↗
@@ -1514,7 +1535,7 @@ export function CajaScreen({
 
                           <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                             <span className="font-black text-sm text-slate-900">
-                              {formatCurrency(sale.total, "CUP", state.rates)}
+                              {formatCurrency(sale.total, state.selectedCurrency, state.rates)}
                             </span>
                             <button
                               onClick={() => {
@@ -1619,8 +1640,20 @@ function UnifiedTicketAndCheckout({
   ) => void;
 }) {
   const totalCUP = ticket.total;
-  const numPaid = typeof cashPaid === "number" ? cashPaid : (cashPaid === "" ? totalCUP : 0);
-  const changeDue = Math.max(0, (typeof cashPaid === "number" ? cashPaid : totalCUP) - totalCUP);
+  // Cash is typed in the selected currency (amounts are stored in CUP)
+  const payCurrency = state.selectedCurrency;
+  const payRate = payCurrency === "CUP" ? 1 : state.rates[payCurrency] || 1;
+  const payToleranceCUP = payCurrency === "CUP" ? 0.001 : payRate * 0.005 + 0.001;
+  const money = (amountCUP: number) => formatCurrency(amountCUP, payCurrency, state.rates);
+  // Exact amount in the selected currency, rounded UP to the cent so it always covers the total
+  const exactInPayCurrency = payCurrency === "CUP" ? totalCUP : Math.ceil((totalCUP / payRate) * 100) / 100;
+  // Only what the cashier actually typed counts; empty = exact payment
+  const typedCash = typeof cashPaid === "number" && cashPaid > 0 ? cashPaid : 0;
+  const typedCashCUP = roundCurrency(typedCash * payRate);
+  const shortfall =
+    typedCashCUP > 0 && typedCashCUP < totalCUP - payToleranceCUP ? roundCurrency(totalCUP - typedCashCUP) : 0;
+  const changeDue = typedCashCUP > totalCUP + payToleranceCUP ? roundCurrency(typedCashCUP - totalCUP) : 0;
+  const cashBlocked = paymentMethod === "cash" && shortfall > 0;
   const totalItemsCount = ticket.items.reduce((a, b) => a + b.qty, 0);
 
   // Online / Offline Connectivity Check
@@ -1743,9 +1776,9 @@ function UnifiedTicketAndCheckout({
                   >
                     {/* Item Thumbnail */}
                     <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
-                      {item.image ? (
+                      {(prod?.image || item.image) ? (
                         <img
-                          src={item.image}
+                          src={prod?.image || item.image}
                           alt={item.name}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
@@ -1762,11 +1795,11 @@ function UnifiedTicketAndCheckout({
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5 text-[11px]">
                         <span className="font-medium text-slate-500 dark:text-slate-400">
-                          {formatCurrency(item.price, "CUP", state.rates)}
+                          {formatCurrency(item.price, state.selectedCurrency, state.rates)}
                         </span>
                         <span className="text-slate-300 dark:text-slate-600">•</span>
                         <span className="font-extrabold text-amber-700 dark:text-amber-400">
-                          {formatCurrency(lineTotal, "CUP", state.rates)}
+                          {formatCurrency(lineTotal, state.selectedCurrency, state.rates)}
                         </span>
                       </div>
                     </div>
@@ -1832,15 +1865,15 @@ function UnifiedTicketAndCheckout({
           <div className="flex items-center justify-between text-[10px] tracking-widest text-slate-400 font-extrabold uppercase px-1">
             <span>TOTAL A COBRAR</span>
             {ticket.discount > 0 && (
-              <span className="text-rose-400">Desc: -${ticket.discount} CUP</span>
+              <span className="text-rose-400">Desc: -{formatCurrency(ticket.discount, state.selectedCurrency, state.rates)}</span>
             )}
           </div>
           <div className="text-2xl sm:text-3xl font-black text-amber-400">
-            {formatCurrency(ticket.total, "CUP", state.rates)}
+            {formatCurrency(ticket.total, state.selectedCurrency, state.rates)}
           </div>
           {state.selectedCurrency !== "CUP" && (
             <div className="text-xs text-slate-300 font-semibold">
-              Equivalente: {formatCurrency(ticket.total, state.selectedCurrency, state.rates)}
+              ≈ {formatCurrency(ticket.total, "CUP", state.rates)}
             </div>
           )}
         </div>
@@ -1850,13 +1883,13 @@ function UnifiedTicketAndCheckout({
           {showDiscountInput ? (
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1">
-                <IconTag size={13} /> Descuento (CUP):
+                <IconTag size={13} /> Descuento ({payCurrency}):
               </span>
               <div className="flex items-center gap-1.5">
                 <input
                   type="number"
-                  value={ticket.discount || ""}
-                  onChange={(e) => ticket.setDiscount(parseFloat(e.target.value || "0"))}
+                  value={ticket.discount ? roundCurrency(ticket.discount / payRate) : ""}
+                  onChange={(e) => ticket.setDiscount(roundCurrency((parseFloat(e.target.value || "0") || 0) * payRate))}
                   placeholder="0"
                   className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-white/20 bg-[var(--color-bg)] text-xs font-bold outline-none text-right text-[var(--color-ink)]"
                   autoFocus
@@ -1881,7 +1914,7 @@ function UnifiedTicketAndCheckout({
               </button>
               {ticket.discount > 0 && (
                 <span className="text-rose-600 dark:text-rose-400 font-black text-xs">
-                  -{formatCurrency(ticket.discount, "CUP", state.rates)}
+                  -{formatCurrency(ticket.discount, state.selectedCurrency, state.rates)}
                 </span>
               )}
             </div>
@@ -1966,23 +1999,51 @@ function UnifiedTicketAndCheckout({
           </div>
         </div>
 
+        {/* Mixed payment: how much was paid in cash (rest = transfer) */}
+        {paymentMethod === "mixed" && (
+          <div className="bg-[var(--color-card-bg)] rounded-2xl p-3 border border-black/10 dark:border-white/10 space-y-1.5">
+            <label className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              PARTE PAGADA EN EFECTIVO ({payCurrency})
+            </label>
+            <div className="neu-inset rounded-xl px-3 h-10 flex items-center gap-2 bg-transparent">
+              <span className="text-slate-400 font-bold text-xs">{payCurrency}</span>
+              <input
+                id="input-mixed-cash"
+                type="number"
+                min={0}
+                value={cashPaid}
+                onChange={(e) =>
+                  setCashPaid(e.target.value === "" ? "" : parseFloat(e.target.value))
+                }
+                placeholder="0"
+                className="flex-1 min-w-0 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
+              />
+            </div>
+            <p className="text-[11px] font-semibold text-slate-500">
+              {typedCashCUP > 0 && typedCashCUP < ticket.total
+                ? `Efectivo: ${money(typedCashCUP)} · Transferencia: ${money(ticket.total - typedCashCUP)}`
+                : "Indica cuánto se pagó en efectivo; el resto se registrará como transferencia."}
+            </p>
+          </div>
+        )}
+
         {/* Cash Given & Quick Bills Buttons */}
         {paymentMethod === "cash" && (
           <div className="bg-[var(--color-card-bg)] rounded-2xl p-3 border border-black/10 dark:border-white/10 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                EFECTIVO RECIBIDO (CUP)
+                EFECTIVO RECIBIDO ({payCurrency})
               </label>
               <button
                 type="button"
-                onClick={() => setCashPaid(ticket.total)}
+                onClick={() => setCashPaid(exactInPayCurrency)}
                 className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
               >
-                Exacto (${ticket.total})
+                Exacto ({money(ticket.total)})
               </button>
             </div>
             <div className="neu-inset rounded-xl px-3 h-10 flex items-center gap-2 bg-transparent">
-              <span className="text-slate-400 font-bold text-sm">$</span>
+              <span className="text-slate-400 font-bold text-xs">{payCurrency}</span>
               <input
                 id="input-cash-paid"
                 type="number"
@@ -1990,8 +2051,8 @@ function UnifiedTicketAndCheckout({
                 onChange={(e) =>
                   setCashPaid(e.target.value === "" ? "" : parseFloat(e.target.value))
                 }
-                placeholder={String(ticket.total)}
-                className="flex-1 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
+                placeholder={String(exactInPayCurrency)}
+                className="flex-1 min-w-0 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
               />
               {cashPaid !== "" && (
                 <button
@@ -2005,9 +2066,10 @@ function UnifiedTicketAndCheckout({
             </div>
 
             {/* Quick Bills Row (Cuban Denominations: 100 to 20.000) */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-0.5">
-              {QUICK_CASH_AMOUNTS.map((amt) => {
-                const label = amt >= 1000 ? `+$${amt.toLocaleString("es-ES")}` : `+$${amt}`;
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-1 pt-0.5">
+              {QUICK_BILLS[payCurrency].map((amt) => {
+                // Thousands separator always (es-ES does not group 4-digit numbers: "1000" vs "10.000")
+                const label = `+${String(amt).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
                 return (
                   <button
                     key={amt}
@@ -2017,11 +2079,11 @@ function UnifiedTicketAndCheckout({
                       setCashPaid(cur + amt);
                     }}
                     className={`py-1 rounded-xl text-[10.5px] font-extrabold transition cursor-pointer active:scale-95 text-center ${
-                      amt >= 10000
+                      payCurrency === "CUP" && amt >= 10000
                         ? "bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-300 font-black border border-amber-300 dark:border-amber-700/50"
                         : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200"
                     }`}
-                    title={`Añadir billete de $${amt.toLocaleString("es-ES")} CUP`}
+                    title={`Añadir billete de ${amt.toLocaleString("es-ES")} ${payCurrency}`}
                   >
                     {label}
                   </button>
@@ -2029,14 +2091,29 @@ function UnifiedTicketAndCheckout({
               })}
             </div>
 
-            {/* Change Output */}
-            {numPaid >= totalCUP && (
+            {/* Change / shortfall output */}
+            {typedCash === 0 && (
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">
+                Escribe o suma con los billetes lo que te entrega el cliente (en {payCurrency}). Si lo dejas vacío se registra como pago exacto.
+              </p>
+            )}
+            {shortfall > 0 && (
+              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800/50 flex items-center justify-between mt-1">
+                <span className="text-xs font-extrabold text-rose-900 dark:text-rose-300">
+                  FALTA POR COBRAR:
+                </span>
+                <span className="text-sm sm:text-base font-black text-rose-700 dark:text-rose-400">
+                  {money(shortfall)}
+                </span>
+              </div>
+            )}
+            {typedCash > 0 && shortfall === 0 && (
               <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between mt-1">
                 <span className="text-xs font-extrabold text-emerald-900 dark:text-emerald-300">
                   CAMBIO A DEVOLVER:
                 </span>
                 <span className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-400">
-                  {formatCurrency(changeDue, "CUP", state.rates)}
+                  {money(changeDue)}
                 </span>
               </div>
             )}
@@ -2089,7 +2166,7 @@ function UnifiedTicketAndCheckout({
                     </div>
                   </div>
                   <span className="font-mono text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                    ${totalCUP} CUP
+                    {formatCurrency(totalCUP, "CUP", state.rates)}
                   </span>
                 </div>
 
@@ -2198,7 +2275,7 @@ function UnifiedTicketAndCheckout({
                     </div>
                   </div>
                   <span className="font-mono text-xs font-black text-red-700 bg-red-50 px-2 py-0.5 rounded-md">
-                    ${totalCUP} CUP
+                    {formatCurrency(totalCUP, "CUP", state.rates)}
                   </span>
                 </div>
 
@@ -2331,18 +2408,20 @@ function UnifiedTicketAndCheckout({
 
             onFinishSale(method, undefined, status, ref, payload, e);
           }}
-          disabled={ticket.items.length === 0}
+          disabled={ticket.items.length === 0 || cashBlocked}
           className={`flex-1 h-12 rounded-2xl font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition cursor-pointer select-none ${
-            ticket.items.length > 0
+            ticket.items.length > 0 && !cashBlocked
               ? "bg-slate-900 hover:bg-slate-800 text-white active:scale-98 shadow-slate-900/20"
               : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
           }`}
         >
           <IconCheck size={16} className={ticket.items.length > 0 ? "text-amber-400" : "text-slate-400"} />
           <span>
-            {paymentMethod !== "cash" && gatewayStatusSelection === "PENDIENTE"
-              ? `REGISTRAR PENDIENTE (${formatCurrency(ticket.total, "CUP", state.rates)})`
-              : `CONFIRMAR COBRO (${formatCurrency(ticket.total, "CUP", state.rates)})`}
+            {cashBlocked
+              ? `FALTAN ${money(shortfall)}`
+              : paymentMethod !== "cash" && gatewayStatusSelection === "PENDIENTE"
+              ? `REGISTRAR PENDIENTE (${formatCurrency(ticket.total, state.selectedCurrency, state.rates)})`
+              : `CONFIRMAR COBRO (${formatCurrency(ticket.total, state.selectedCurrency, state.rates)})`}
           </span>
         </button>
       </div>

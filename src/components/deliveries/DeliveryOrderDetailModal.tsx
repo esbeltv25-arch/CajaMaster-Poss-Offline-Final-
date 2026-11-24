@@ -263,7 +263,7 @@ export function DeliveryOrderDetailModal({
                 Productos Solicitados ({order.items.length})
               </p>
               <span className="text-xs font-bold text-slate-500">
-                Subtotal: {formatCurrency(order.itemsSubtotal, "CUP", state.rates)}
+                Subtotal: {formatCurrency(order.itemsSubtotal, state.selectedCurrency, state.rates)}
               </span>
             </div>
 
@@ -277,7 +277,7 @@ export function DeliveryOrderDetailModal({
                     </span>
                   </div>
                   <span className="font-extrabold text-slate-900">
-                    {formatCurrency(item.price * item.qty, "CUP", state.rates)}
+                    {formatCurrency(item.price * item.qty, state.selectedCurrency, state.rates)}
                   </span>
                 </div>
               ))}
@@ -288,16 +288,16 @@ export function DeliveryOrderDetailModal({
           <div className="p-3.5 bg-slate-900 text-white rounded-2xl space-y-2 shadow-md">
             <div className="flex items-center justify-between text-xs text-slate-300">
               <span>Subtotal Productos:</span>
-              <span className="font-bold">{formatCurrency(order.itemsSubtotal, "CUP", state.rates)}</span>
+              <span className="font-bold">{formatCurrency(order.itemsSubtotal, state.selectedCurrency, state.rates)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-300">
               <span>Tarifa de Envío / Mensajería:</span>
-              <span className="font-bold">+{formatCurrency(order.deliveryFee, "CUP", state.rates)}</span>
+              <span className="font-bold">+{formatCurrency(order.deliveryFee, state.selectedCurrency, state.rates)}</span>
             </div>
             {order.tip ? (
               <div className="flex items-center justify-between text-xs text-amber-300">
                 <span>Propina Conductor:</span>
-                <span className="font-bold">+{formatCurrency(order.tip, "CUP", state.rates)}</span>
+                <span className="font-bold">+{formatCurrency(order.tip, state.selectedCurrency, state.rates)}</span>
               </div>
             ) : null}
 
@@ -305,7 +305,7 @@ export function DeliveryOrderDetailModal({
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase">Total a Cobrar</p>
                 <p className="text-lg font-black text-amber-400">
-                  {formatCurrency(order.total, "CUP", state.rates)}
+                  {formatCurrency(order.total, state.selectedCurrency, state.rates)}
                 </p>
               </div>
 

@@ -1,3 +1,4 @@
+import { getDisplayCurrency } from "../store";
 import { useState, useMemo } from "react";
 import type { Product, ExchangeRates } from "../types";
 import { formatCurrency } from "../utils/currency";
@@ -343,7 +344,7 @@ export function LowStockHighlightSection({
                         <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                           <span>{p.category || "General"}</span>
                           <span aria-hidden="true" className="mx-1">·</span>
-                          <span>{formatCurrency(p.price, "CUP", rates)}</span>
+                          <span>{formatCurrency(p.price, getDisplayCurrency(), rates)}</span>
                         </div>
                       </div>
                     </div>
@@ -390,7 +391,7 @@ export function LowStockHighlightSection({
                         </span>
                         {p.cost > 0 && (
                           <span className="text-slate-400">
-                            Costo: {formatCurrency(p.cost, "CUP", rates)}
+                            Costo: {formatCurrency(p.cost, getDisplayCurrency(), rates)}
                           </span>
                         )}
                       </div>

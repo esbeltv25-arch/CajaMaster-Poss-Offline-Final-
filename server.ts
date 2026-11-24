@@ -204,7 +204,9 @@ async function startServer() {
           }
 
           case "state:snapshot": {
-            if (clientInfo) {
+            // Only the Caja Central (primary) is the source of truth for the full state:
+            // a reset/restore on a terminal must not overwrite the other devices.
+            if (clientInfo && clientInfo.role === "primary") {
               const { roomKey, state } = msg;
               if (state && roomKey) {
                 roomSnapshots.set(roomKey, {
@@ -219,6 +221,8 @@ async function startServer() {
                   state,
                   senderId: clientInfo.deviceId,
                   senderName: clientInfo.deviceName,
+                  senderRole: clientInfo.role,
+                  msgId: msg.msgId,
                   timestamp: Date.now(),
                 }, clientInfo.deviceId);
               }
@@ -231,7 +235,9 @@ async function startServer() {
           case "sale:new":
           case "stock:update":
           case "account:update":
+          case "account:delete":
           case "product:update":
+          case "product:delete":
           case "category:update": {
             if (clientInfo) {
               const { roomKey } = clientInfo;
@@ -254,6 +260,10 @@ async function startServer() {
               // Forward request to primary terminal in room
               broadcastToRoom(roomKey, {
                 type: "state:request",
+                roomKey,
+                senderId: clientInfo.deviceId,
+                senderName: clientInfo.deviceName,
+                senderRole: clientInfo.role,
                 requesterId: clientInfo.deviceId,
                 requesterName: clientInfo.deviceName,
                 timestamp: Date.now(),
@@ -424,7 +434,8 @@ async function startServer() {
 
   // Direct standalone License Generator HTML
   app.get(["/generador", "/generador.html", "/generador-licencias", "/admin-licencia"], (_req: Request, res: Response) => {
-    const filePath = path.join(process.cwd(), "public", "generador.html");
+    // Fuera de public/: así no se empaqueta en el APK ni en los ZIP OTA
+    const filePath = path.join(process.cwd(), "Generador_CajaMaster_POS.html");
     res.sendFile(filePath);
   });
 

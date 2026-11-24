@@ -75,6 +75,8 @@ export type Sale = {
   cashPaid?: number;
   change?: number;
   currency: CurrencyCode;
+  /** CUP per 1 unit of `currency` at the time of the sale (1 for CUP). */
+  exchangeRate?: number;
   notes?: string;
 };
 
@@ -119,6 +121,15 @@ export type PhysicalCountItem = {
   price: number;
 };
 
+/** Efectivo esperado y contado de una moneda en el cierre. Importes en esa moneda. */
+export type CashCurrencyCount = {
+  currency: CurrencyCode;
+  expected: number;
+  counted: number;
+  difference: number; // counted - expected (en la moneda)
+  rate: number; // CUP por unidad usada para convertir (tasa media de las ventas del día)
+};
+
 export type DailyClosing = {
   id: string;
   date: string; // YYYY-MM-DD
@@ -136,6 +147,8 @@ export type DailyClosing = {
   inventoryTotalValue: number;
   counts: PhysicalCountItem[];
   billCounts?: Record<number, number>; // Desglose por denominación (ej. 20000, 10000, 5000...)
+  /** Arqueo separado por moneda (solo si hubo cobros en efectivo en divisas). */
+  cashByCurrency?: CashCurrencyCount[];
   notes?: string;
   cashier?: string;
 };

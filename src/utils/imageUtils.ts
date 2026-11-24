@@ -1,8 +1,8 @@
 export async function compressImage(
   fileOrBlob: Blob | File,
-  maxWidth = 600,
+  maxWidth = 480,
   maxHeight = 600,
-  quality = 0.82
+  quality = 0.75
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

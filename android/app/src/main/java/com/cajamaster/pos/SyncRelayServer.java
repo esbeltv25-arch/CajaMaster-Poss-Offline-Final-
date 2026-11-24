@@ -10,6 +10,8 @@ import org.json.JSONObject;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SyncRelayServer - WebSocket Relay Engine running directly on Android.
@@ -38,6 +40,11 @@ public class SyncRelayServer extends WebSocketServer {
     private final Map<String, JSONObject> roomSnapshots = new ConcurrentHashMap<>();
     // WebSocket connection -> ClientSession
     private final Map<WebSocket, ClientSession> socketToSession = new ConcurrentHashMap<>();
+
+    // Start-up tracking so callers can wait until the port is really bound
+    private final CountDownLatch startLatch = new CountDownLatch(1);
+    private volatile boolean started = false;
+    private volatile Exception startError = null;
 
     public SyncRelayServer(int port) {
         super(new InetSocketAddress(port));
@@ -146,9 +153,14 @@ public class SyncRelayServer extends WebSocketServer {
                     break;
                 }
 
+                case "pong": {
+                    break;
+                }
+
                 case "state:snapshot": {
                     ClientSession s = socketToSession.get(conn);
-                    if (s != null) {
+                    // Only the Caja Central (primary) may publish the full state
+                    if (s != null && "primary".equals(s.role)) {
                         String roomKey = msg.optString("roomKey", s.roomKey);
                         JSONObject stateObj = msg.optJSONObject("state");
                         if (stateObj != null && !roomKey.isEmpty()) {
@@ -165,6 +177,8 @@ public class SyncRelayServer extends WebSocketServer {
                             broadcastObj.put("state", stateObj);
                             broadcastObj.put("senderId", s.deviceId);
                             broadcastObj.put("senderName", s.deviceName);
+                            broadcastObj.put("senderRole", s.role);
+                            if (msg.has("msgId")) broadcastObj.put("msgId", msg.optString("msgId"));
                             broadcastObj.put("timestamp", System.currentTimeMillis());
                             broadcastToRoom(roomKey, broadcastObj.toString(), s.deviceId);
                         }
@@ -177,7 +191,9 @@ public class SyncRelayServer extends WebSocketServer {
                 case "sale:new":
                 case "stock:update":
                 case "account:update":
+                case "account:delete":
                 case "product:update":
+                case "product:delete":
                 case "category:update": {
                     ClientSession s = socketToSession.get(conn);
                     if (s != null) {
@@ -197,6 +213,10 @@ public class SyncRelayServer extends WebSocketServer {
                     if (s != null) {
                         JSONObject reqMsg = new JSONObject();
                         reqMsg.put("type", "state:request");
+                        reqMsg.put("roomKey", s.roomKey);
+                        reqMsg.put("senderId", s.deviceId);
+                        reqMsg.put("senderName", s.deviceName);
+                        reqMsg.put("senderRole", s.role);
                         reqMsg.put("requesterId", s.deviceId);
                         reqMsg.put("requesterName", s.deviceName);
                         reqMsg.put("timestamp", System.currentTimeMillis());
@@ -221,11 +241,40 @@ public class SyncRelayServer extends WebSocketServer {
     @Override
     public void onError(WebSocket conn, Exception ex) {
         Log.e(TAG, "WebSocket server error: " + (conn != null ? conn.getRemoteSocketAddress() : "server"), ex);
+        if (conn == null && !started) {
+            // Fatal server error before start (e.g. port already in use)
+            startError = ex;
+            startLatch.countDown();
+        }
     }
 
     @Override
     public void onStart() {
         Log.i(TAG, "SyncRelayServer started successfully on port " + getPort());
+        setConnectionLostTimeout(30);
+        started = true;
+        startLatch.countDown();
+    }
+
+    /**
+     * Blocks until the server socket is bound (or failed), up to timeoutMs.
+     * @return true if the server is listening.
+     */
+    public boolean awaitStart(long timeoutMs) {
+        try {
+            startLatch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+        return started;
+    }
+
+    public boolean isStarted() {
+        return started;
+    }
+
+    public Exception getStartError() {
+        return startError;
     }
 
     private void broadcastPresence(String roomKey) {
