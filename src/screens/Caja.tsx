@@ -219,8 +219,6 @@ export function CajaScreen({
   }, [state.products, selectedCategory, search]);
 
   const totalCUP = ticket.total;
-  const numPaid = typeof cashPaid === "number" ? cashPaid : (cashPaid === "" ? totalCUP : 0);
-  const changeDue = Math.max(0, (typeof cashPaid === "number" ? cashPaid : totalCUP) - totalCUP);
 
   const handleFinishSale = (
     customMethod?: PaymentMethod,
@@ -238,6 +236,16 @@ export function CajaScreen({
 
     try {
       const method = customMethod || paymentMethod;
+      // Cash received lower than the total: do not register the sale as paid
+      if (
+        method === "cash" &&
+        customCash === undefined &&
+        typeof cashPaid === "number" &&
+        cashPaid > 0 &&
+        cashPaid < ticket.total
+      ) {
+        return;
+      }
       const finalCash =
         method === "cash"
           ? (customCash !== undefined
@@ -384,13 +392,13 @@ export function CajaScreen({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setCashPaid(ticket.total);
+                  setCashPaid("");
                   setIsCheckoutOpen(true);
                 }}
                 onTouchEnd={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setCashPaid(ticket.total);
+                  setCashPaid("");
                   setIsCheckoutOpen(true);
                 }}
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl neu-sm text-[var(--color-ink)] flex items-center justify-center transition cursor-pointer hover:scale-105 active:scale-95 relative select-none"
@@ -1124,13 +1132,13 @@ export function CajaScreen({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCashPaid(ticket.total);
+              setCashPaid("");
               setIsCheckoutOpen(true);
             }}
             onTouchEnd={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCashPaid(ticket.total);
+              setCashPaid("");
               setIsCheckoutOpen(true);
             }}
             className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition cursor-pointer shadow-2xl border select-none ${
@@ -1624,8 +1632,11 @@ function UnifiedTicketAndCheckout({
   ) => void;
 }) {
   const totalCUP = ticket.total;
-  const numPaid = typeof cashPaid === "number" ? cashPaid : (cashPaid === "" ? totalCUP : 0);
-  const changeDue = Math.max(0, (typeof cashPaid === "number" ? cashPaid : totalCUP) - totalCUP);
+  // Only what the cashier actually typed counts; empty = exact payment
+  const typedCash = typeof cashPaid === "number" && cashPaid > 0 ? cashPaid : 0;
+  const changeDue = typedCash > totalCUP ? Math.round((typedCash - totalCUP) * 100) / 100 : 0;
+  const shortfall = typedCash > 0 && typedCash < totalCUP ? Math.round((totalCUP - typedCash) * 100) / 100 : 0;
+  const cashBlocked = paymentMethod === "cash" && shortfall > 0;
   const totalItemsCount = ticket.items.reduce((a, b) => a + b.qty, 0);
 
   // Online / Offline Connectivity Check
@@ -2063,8 +2074,23 @@ function UnifiedTicketAndCheckout({
               })}
             </div>
 
-            {/* Change Output */}
-            {numPaid >= totalCUP && (
+            {/* Change / shortfall output */}
+            {typedCash === 0 && (
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">
+                Escribe o suma con los billetes lo que te entrega el cliente. Si lo dejas vacío se registra como pago exacto.
+              </p>
+            )}
+            {shortfall > 0 && (
+              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800/50 flex items-center justify-between mt-1">
+                <span className="text-xs font-extrabold text-rose-900 dark:text-rose-300">
+                  FALTA POR COBRAR:
+                </span>
+                <span className="text-sm sm:text-base font-black text-rose-700 dark:text-rose-400">
+                  {formatCurrency(shortfall, "CUP", state.rates)}
+                </span>
+              </div>
+            )}
+            {typedCash >= totalCUP && typedCash > 0 && (
               <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between mt-1">
                 <span className="text-xs font-extrabold text-emerald-900 dark:text-emerald-300">
                   CAMBIO A DEVOLVER:
@@ -2365,16 +2391,18 @@ function UnifiedTicketAndCheckout({
 
             onFinishSale(method, undefined, status, ref, payload, e);
           }}
-          disabled={ticket.items.length === 0}
+          disabled={ticket.items.length === 0 || cashBlocked}
           className={`flex-1 h-12 rounded-2xl font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition cursor-pointer select-none ${
-            ticket.items.length > 0
+            ticket.items.length > 0 && !cashBlocked
               ? "bg-slate-900 hover:bg-slate-800 text-white active:scale-98 shadow-slate-900/20"
               : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
           }`}
         >
           <IconCheck size={16} className={ticket.items.length > 0 ? "text-amber-400" : "text-slate-400"} />
           <span>
-            {paymentMethod !== "cash" && gatewayStatusSelection === "PENDIENTE"
+            {cashBlocked
+              ? `FALTAN ${formatCurrency(shortfall, "CUP", state.rates)}`
+              : paymentMethod !== "cash" && gatewayStatusSelection === "PENDIENTE"
               ? `REGISTRAR PENDIENTE (${formatCurrency(ticket.total, "CUP", state.rates)})`
               : `CONFIRMAR COBRO (${formatCurrency(ticket.total, "CUP", state.rates)})`}
           </span>
