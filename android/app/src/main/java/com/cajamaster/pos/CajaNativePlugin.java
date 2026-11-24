@@ -91,31 +91,57 @@ public class CajaNativePlugin extends Plugin {
 
     @PluginMethod
     public void startSyncServer(PluginCall call) {
-        int port = call.getInt("port", 8787);
-        try {
-            if (syncServerInstance != null) {
+        final int port = call.getInt("port", 8787);
+        // Run off the plugin thread: binding the socket may take a moment.
+        new Thread(() -> {
+            synchronized (CajaNativePlugin.class) {
                 try {
-                    syncServerInstance.stop();
-                } catch (Exception ignored) {}
-                syncServerInstance = null;
+                    // IMPORTANT: if the relay is already listening on this port, keep it.
+                    // Restarting it would drop every connected terminal on each reconnect.
+                    if (syncServerInstance != null && syncServerInstance.isStarted() && syncServerPort == port) {
+                        resolveServerInfo(call, port, true);
+                        return;
+                    }
+
+                    if (syncServerInstance != null) {
+                        try {
+                            syncServerInstance.stop(1000);
+                        } catch (Exception ignored) {}
+                        syncServerInstance = null;
+                    }
+
+                    SyncRelayServer server = new SyncRelayServer(port);
+                    server.start();
+                    boolean ok = server.awaitStart(4000);
+                    if (!ok) {
+                        Exception err = server.getStartError();
+                        try { server.stop(500); } catch (Exception ignored) {}
+                        Log.e(TAG, "Sync server failed to bind on port " + port, err);
+                        call.reject("No se pudo abrir el puerto " + port + (err != null ? (": " + err.getMessage()) : ""));
+                        return;
+                    }
+
+                    syncServerInstance = server;
+                    syncServerPort = port;
+                    Log.i(TAG, "Sync server started on " + findLocalIpAddress() + ":" + port);
+                    resolveServerInfo(call, port, false);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error starting sync server", e);
+                    call.reject("Failed to start sync server: " + e.getMessage(), e);
+                }
             }
+        }).start();
+    }
 
-            syncServerInstance = new SyncRelayServer(port);
-            syncServerInstance.start();
-            syncServerPort = port;
-
-            String ip = findLocalIpAddress();
-            Log.i(TAG, "Sync server started on " + ip + ":" + port);
-
-            JSObject ret = new JSObject();
-            ret.put("running", true);
-            ret.put("port", port);
-            ret.put("ip", ip != null ? ip : "127.0.0.1");
-            call.resolve(ret);
-        } catch (Exception e) {
-            Log.e(TAG, "Error starting sync server", e);
-            call.reject("Failed to start sync server: " + e.getMessage(), e);
-        }
+    private void resolveServerInfo(PluginCall call, int port, boolean alreadyRunning) {
+        String ip = findLocalIpAddress();
+        JSObject ret = new JSObject();
+        ret.put("running", true);
+        ret.put("alreadyRunning", alreadyRunning);
+        ret.put("port", port);
+        ret.put("clientCount", syncServerInstance != null ? syncServerInstance.getClientCount() : 0);
+        ret.put("ip", ip != null ? ip : "127.0.0.1");
+        call.resolve(ret);
     }
 
     @PluginMethod
@@ -137,7 +163,7 @@ public class CajaNativePlugin extends Plugin {
     @PluginMethod
     public void getSyncServerStatus(PluginCall call) {
         JSObject ret = new JSObject();
-        boolean running = syncServerInstance != null;
+        boolean running = syncServerInstance != null && syncServerInstance.isStarted();
         ret.put("running", running);
         ret.put("port", syncServerPort);
         ret.put("clientCount", syncServerInstance != null ? syncServerInstance.getClientCount() : 0);
@@ -283,26 +309,31 @@ public class CajaNativePlugin extends Plugin {
     private String findLocalIpAddress() {
         try {
             List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-            // 1. Prefer Wi-Fi or AP interfaces (wlan0, ap0, softap)
+            String wifiAny = null;
+            String lanAny = null;
+            String anyIp = null;
             for (NetworkInterface intf : interfaces) {
+                try {
+                    if (!intf.isUp() || intf.isLoopback()) continue;
+                } catch (Exception ignored) {}
                 String name = intf.getName().toLowerCase();
-                if (name.contains("wlan") || name.contains("ap") || name.contains("swlan")) {
-                    for (InetAddress addr : Collections.list(intf.getInetAddresses())) {
-                        if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) {
-                            return addr.getHostAddress();
-                        }
-                    }
-                }
-            }
-
-            // 2. Fallback to any non-loopback IPv4 address
-            for (NetworkInterface intf : interfaces) {
+                // wlan0 (Wi-Fi), swlan0/ap0/softap0 (hotspot), eth0 (cable)
+                boolean isWifi = name.startsWith("wlan") || name.startsWith("swlan")
+                        || name.startsWith("ap") || name.startsWith("softap") || name.startsWith("eth");
                 for (InetAddress addr : Collections.list(intf.getInetAddresses())) {
-                    if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) {
-                        return addr.getHostAddress();
+                    if (addr.isLoopbackAddress() || !(addr instanceof Inet4Address)) continue;
+                    String ip = addr.getHostAddress();
+                    if (isWifi && addr.isSiteLocalAddress()) {
+                        return ip; // best candidate: private IP on Wi-Fi / hotspot
                     }
+                    if (isWifi && wifiAny == null) wifiAny = ip;
+                    if (addr.isSiteLocalAddress() && lanAny == null) lanAny = ip;
+                    if (anyIp == null) anyIp = ip;
                 }
             }
+            if (wifiAny != null) return wifiAny;
+            if (lanAny != null) return lanAny;
+            if (anyIp != null) return anyIp;
         } catch (Exception e) {
             Log.e(TAG, "Error finding local IP", e);
         }

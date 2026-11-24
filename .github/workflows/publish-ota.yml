@@ -1,0 +1,94 @@
+# Publica automáticamente la actualización OTA en el repositorio CajaMaster-Updates.
+#
+# Cómo publicar una versión nueva:
+#   1. Sube el número en version.json (version, versionCode mayor que el anterior, changelog).
+#   2. Haz commit y push a main. Este flujo compila, genera updates/bundle-vX.Y.Z.zip
+#      y lo sube junto con version.json a esbeltv25-arch/CajaMaster-Updates.
+#   3. Los dispositivos lo detectan al abrir la app (aviso "Nueva versión disponible").
+#
+# Requisito (una sola vez): crear el secreto OTA_PUSH_TOKEN en
+#   Settings > Secrets and variables > Actions de ESTE repositorio, con un
+#   token de GitHub (fine-grained) con permiso "Contents: Read and write"
+#   sobre el repositorio CajaMaster-Updates.
+name: Publicar actualización OTA
+
+on:
+  push:
+    branches: [main]
+    paths: [version.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-ota
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      UPDATES_REPO: esbeltv25-arch/CajaMaster-Updates
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Leer version.json
+        id: ver
+        run: |
+          echo "version=$(node -p "require('./version.json').version")" >> "$GITHUB_OUTPUT"
+          echo "code=$(node -p "require('./version.json').versionCode")" >> "$GITHUB_OUTPUT"
+          echo "mandatory=$(node -p "!!require('./version.json').mandatory")" >> "$GITHUB_OUTPUT"
+          node -p "require('./version.json').changelog" > /tmp/changelog.txt
+
+      - name: Comprobar versión publicada
+        id: remote
+        run: |
+          REMOTE=$(curl -fsSL "https://raw.githubusercontent.com/${UPDATES_REPO}/main/version.json?t=$(date +%s)" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).versionCode||0)}catch{console.log(0)}})" || echo 0)
+          echo "Publicada: ${REMOTE} | Local: ${{ steps.ver.outputs.code }}"
+          if [ "${{ steps.ver.outputs.code }}" -le "${REMOTE}" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::versionCode ${{ steps.ver.outputs.code }} no es mayor que el publicado (${REMOTE}). Sube versionCode en version.json."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Instalar dependencias
+        if: steps.remote.outputs.skip == 'false'
+        run: npm install --no-audit --no-fund
+
+      - name: Compilar y empaquetar ZIP
+        if: steps.remote.outputs.skip == 'false'
+        run: node scripts/package-ota.js "${{ steps.ver.outputs.version }}" "${{ steps.ver.outputs.code }}" "$(cat /tmp/changelog.txt)" "${{ steps.ver.outputs.mandatory }}"
+
+      - name: Verificar paquete
+        if: steps.remote.outputs.skip == 'false'
+        run: |
+          ZIP="updates/bundle-v${{ steps.ver.outputs.version }}.zip"
+          test -f "$ZIP"
+          unzip -l "$ZIP" | grep -q " index.html$"
+          unzip -p "$ZIP" version.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);if(j.versionCode!==${{ steps.ver.outputs.code }}){console.error('versionCode del ZIP no coincide');process.exit(1)}})"
+
+      - name: Subir a CajaMaster-Updates
+        if: steps.remote.outputs.skip == 'false'
+        env:
+          TOKEN: ${{ secrets.OTA_PUSH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Falta el secreto OTA_PUSH_TOKEN (ver comentario al inicio de este archivo)."
+            exit 1
+          fi
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${UPDATES_REPO}.git" /tmp/updates
+          mkdir -p /tmp/updates/updates
+          cp version.json /tmp/updates/version.json
+          cp "updates/bundle-v${{ steps.ver.outputs.version }}.zip" /tmp/updates/updates/
+          cd /tmp/updates
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.json updates/
+          git commit -m "Release OTA v${{ steps.ver.outputs.version }} (Build ${{ steps.ver.outputs.code }})" || { echo "Sin cambios"; exit 0; }
+          git push origin HEAD:main

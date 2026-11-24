@@ -1475,7 +1475,7 @@ export function AjustesScreen({
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
               <button
-                onClick={() => downloadLatestZipDirectly("1.3.5")}
+                onClick={() => downloadLatestZipDirectly()}
                 className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
               >
                 <span>Descargar ZIP v1.3.5</span>

@@ -554,6 +554,22 @@ export function SyncSettingsModal({
                 <div className="text-3xl font-mono font-black tracking-widest text-white py-1">
                   {config.roomKey}
                 </div>
+                {isLocalMode && isServer && (() => {
+                  const hostForPin = (customHost || config.serverHost || "").split(":")[0];
+                  const validIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostForPin) && hostForPin !== "127.0.0.1";
+                  return validIp ? (
+                    <p className="text-[11px] text-slate-300">
+                      Para escribirlo a mano en el terminal (Wi-Fi local):{" "}
+                      <span className="font-mono font-bold text-amber-300">
+                        {config.roomKey}@{hostForPin}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] font-semibold text-rose-300">
+                      ⚠️ Este equipo no tiene IP de Wi-Fi. Conéctalo al router o activa su hotspot y vuelve a abrir esta pestaña; si no, el QR no servirá para Wi-Fi local.
+                    </p>
+                  );
+                })()}
                 <div className="flex items-center justify-center gap-2 pt-1">
                   <button
                     onClick={handleCopyPin}

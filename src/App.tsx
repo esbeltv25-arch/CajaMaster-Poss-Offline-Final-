@@ -15,7 +15,12 @@ import { ThemeProvider } from "./themeContext";
 import { ThemeSelectorModal } from "./components/ThemeSelectorModal";
 import { NotificationBanner } from "./components/NotificationBanner";
 import { QuickStartGuideModal, type GuideSection } from "./components/QuickStartGuideModal";
-import { checkOtaUpdate, applyOtaUpdateAndReload, type RemoteVersionInfo } from "./services/otaUpdateService";
+import {
+  checkOtaUpdate,
+  downloadAndExtractOtaBundle,
+  applyOtaUpdateAndReload,
+  type RemoteVersionInfo,
+} from "./services/otaUpdateService";
 import type { Product } from "./types";
 
 type View =
@@ -29,6 +34,23 @@ function AppContent() {
   const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [quickGuideSection, setQuickGuideSection] = useState<GuideSection>("wizard");
   const [otaAvailable, setOtaAvailable] = useState<RemoteVersionInfo | null>(null);
+  const [otaDismissed, setOtaDismissed] = useState(false);
+  const [otaBusy, setOtaBusy] = useState(false);
+  const [otaStatus, setOtaStatus] = useState<string>("");
+
+  async function installOtaNow() {
+    if (!otaAvailable || otaBusy) return;
+    setOtaBusy(true);
+    setOtaStatus("Descargando actualización...");
+    const res = await downloadAndExtractOtaBundle(otaAvailable, (pct, msg) => setOtaStatus(`${pct}% · ${msg}`));
+    if (res.success) {
+      setOtaStatus("Aplicando nueva versión...");
+      await applyOtaUpdateAndReload();
+    } else {
+      setOtaStatus("Error: " + res.message);
+      setOtaBusy(false);
+    }
+  }
 
   // Silent, non-blocking background check on app start
   useEffect(() => {
@@ -46,15 +68,6 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, [activated]);
 
-  if (!activated) {
-    return (
-      <ActivationScreen
-        deviceId={deviceId}
-        onActivated={() => setActivated(true)}
-      />
-    );
-  }
-
   useEffect(() => {
     const handleNav = (e: any) => {
       if (e?.detail) {
@@ -64,6 +77,15 @@ function AppContent() {
     window.addEventListener("cajamaster-nav", handleNav);
     return () => window.removeEventListener("cajamaster-nav", handleNav);
   }, []);
+
+  if (!activated) {
+    return (
+      <ActivationScreen
+        deviceId={deviceId}
+        onActivated={() => setActivated(true)}
+      />
+    );
+  }
 
   function logout() {
     revokeLicense();
@@ -173,6 +195,40 @@ function AppContent() {
 
         {view.kind === "tab" && (
           <BottomNav tab={currentTab} onChange={(t) => setView({ kind: "tab", tab: t })} />
+        )}
+
+        {/* OTA update available banner */}
+        {otaAvailable && !otaDismissed && (
+          <div className="absolute left-3 right-3 bottom-20 z-40 rounded-2xl bg-slate-900 text-white shadow-2xl border border-amber-400/40 p-3 flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-black text-amber-300">
+                  Nueva versión {otaAvailable.version} disponible
+                </p>
+                <p className="text-[11px] text-slate-300 line-clamp-2">
+                  {otaStatus || otaAvailable.changelog}
+                </p>
+              </div>
+              {!otaBusy && !otaAvailable.mandatory && (
+                <button
+                  type="button"
+                  onClick={() => setOtaDismissed(true)}
+                  className="text-slate-400 hover:text-white text-xs font-bold px-1 cursor-pointer"
+                  aria-label="Cerrar aviso"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={installOtaNow}
+              disabled={otaBusy}
+              className="w-full py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black disabled:opacity-60 cursor-pointer"
+            >
+              {otaBusy ? "Actualizando..." : "Actualizar ahora"}
+            </button>
+          </div>
         )}
 
         {/* In-App Stock Notification Banner stays strictly inside the frame */}

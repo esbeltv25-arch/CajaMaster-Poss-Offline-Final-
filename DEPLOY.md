@@ -8,6 +8,21 @@ Esta guía detalla cómo publicar actualizaciones transparentes de la interfaz w
 
 ---
 
+## ✅ Método Recomendado: Publicación Automática con GitHub Actions
+
+El flujo `.github/workflows/publish-ota.yml` conecta este repositorio con `CajaMaster-Updates`:
+
+1. **Una sola vez:** crea un token de GitHub *fine-grained* con permiso **Contents: Read and write** sobre `esbeltv25-arch/CajaMaster-Updates` y guárdalo en este repositorio como secreto **`OTA_PUSH_TOKEN`** (Settings → Secrets and variables → Actions).
+2. **En cada versión:** edita `version.json` (y `public/version.json`) subiendo `version`, **`versionCode` (siempre mayor que el anterior)** y `changelog`; haz commit y push a `main`.
+3. El flujo compila, genera `updates/bundle-vX.Y.Z.zip`, verifica que el `versionCode` del ZIP coincide y sube `version.json` + ZIP a `CajaMaster-Updates`.
+4. Al abrir la app, los dispositivos muestran el aviso **«Nueva versión disponible → Actualizar ahora»**.
+
+> El `versionCode` del `version.json` interno del ZIP es la fuente de verdad: la app compara contra la versión que realmente se está ejecutando (`/version.json` del bundle activo), no contra un valor guardado.
+
+> Los cambios en código Java/Android (por ejemplo `SyncRelayServer.java`, `MainActivity.java`) **no** viajan por OTA: requieren compilar e instalar un APK nuevo.
+
+---
+
 ## 🛠️ Método Rápido y Automatizado (1 Solo Comando)
 
 En la raíz del proyecto de CajaMaster, ejecuta el script automatizado:

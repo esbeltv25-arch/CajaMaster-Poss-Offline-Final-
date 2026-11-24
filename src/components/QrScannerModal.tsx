@@ -21,6 +21,30 @@ import { syncService } from "../services/multiDeviceSync";
 import { requestCameraPermission } from "../utils/nativeBridge";
 import type { DeviceRole, SyncConfig } from "../types";
 
+/**
+ * Decodes a QR from a still image. Phone photos are 8-12 MP: jsQR is slow and
+ * often fails on such large images, so we try several downscaled sizes first.
+ */
+function decodeQrFromImageElement(img: HTMLImageElement): string | null {
+  const maxSide = Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height);
+  if (!maxSide) return null;
+  const targets = [800, 1200, 1600, 2400].filter((t) => t < maxSide);
+  targets.push(Math.min(maxSide, 3000));
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  for (const target of targets) {
+    const scale = target / maxSide;
+    canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+    canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "attemptBoth" });
+    if (code?.data) return code.data;
+  }
+  return null;
+}
+
 export interface QrScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,9 +65,6 @@ export function QrScannerModal({
   title = "Lector QR de Vinculación",
   description = "Apunta la cámara al código QR de la Caja Central o Terminal Servidor para sincronizar al instante.",
 }: QrScannerModalProps) {
-  const isMobile =
-    typeof navigator !== "undefined" &&
-    /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const isInIframe = typeof window !== "undefined" && window.self !== window.top;
   const isNative = Capacitor.isNativePlatform();
 
@@ -76,6 +97,10 @@ export function QrScannerModal({
   const activeStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mobileQrCaptureInputRef = useRef<HTMLInputElement | null>(null);
+  const lastScanTsRef = useRef(0);
+  const lastRejectedRef = useRef<string>("");
+  const handledRef = useRef(false);
+  const [scanHint, setScanHint] = useState<string | null>(null);
 
   // Confirmación sonora sutil usando Web Audio API
   const playSuccessChime = useCallback(() => {
@@ -128,12 +153,16 @@ export function QrScannerModal({
 
   // Procesamiento de datos decodificados (declarado antes de su uso)
   const handleDecodedData = useCallback(
-    (decodedString: string) => {
-      if (!decodedString) return;
+    (decodedString: string, fromLiveCamera = false): boolean => {
+      if (!decodedString || handledRef.current) return false;
+
+      // While scanning live, ignore a code we already rejected (avoids flicker)
+      if (fromLiveCamera && decodedString === lastRejectedRef.current) return false;
 
       try {
         const pairRes = syncService.pairFromQrCode(decodedString);
         if (pairRes.success && pairRes.details) {
+          handledRef.current = true;
           playSuccessChime();
           setIsScanning(false);
           stopCamera();
@@ -153,12 +182,20 @@ export function QrScannerModal({
             }
             onClose();
           }, 1400);
+          return true;
+        }
+        const msg = pairRes.message || "Código QR no reconocido para vinculación.";
+        if (fromLiveCamera) {
+          // Keep the camera running: just show a hint over the video
+          lastRejectedRef.current = decodedString;
+          setScanHint(msg);
         } else {
-          setCameraError(pairRes.message || "Código QR no reconocido para vinculación.");
+          setCameraError(msg);
         }
       } catch (e) {
         console.error("Error al procesar payload QR:", e);
       }
+      return false;
     },
     [onSuccess, onClose, playSuccessChime, stopCamera]
   );
@@ -169,22 +206,11 @@ export function QrScannerModal({
       setIsProcessingFile(true);
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          setIsProcessingFile(false);
-          return;
-        }
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imgData.data, imgData.width, imgData.height, {
-          inversionAttempts: "attemptBoth",
-        });
+        const data = decodeQrFromImageElement(img);
         setIsProcessingFile(false);
-        if (code && code.data) {
-          handleDecodedData(code.data);
+        if (data) {
+          setCameraError(null);
+          handleDecodedData(data);
         } else {
           setCameraError(
             "No se detectó un código QR legible en la foto. Intenta enfocar más cerca con buena iluminación o escribe el PIN de la sala."
@@ -243,17 +269,13 @@ export function QrScannerModal({
       let newStream: MediaStream;
       try {
         const constraints: MediaStreamConstraints = {
-          video: isMobile
-            ? {
-                facingMode: { ideal: facingMode },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-              }
-            : {
-                facingMode: { ideal: "user" },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-              },
+          // Prefer the rear camera on phones AND tablets (some Android tablets
+          // do not report "Mobi" in their user agent and got the front camera).
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         };
         newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -332,7 +354,7 @@ export function QrScannerModal({
       setTechnicalError(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
       setShowManualInput(true);
     }
-  }, [facingMode, isInIframe, isMobile]);
+  }, [facingMode, isInIframe, isNative]);
 
   // Captura Directa con Cámara Hardware (100% Infalible en Móviles y Android)
   const handleDirectCameraScan = useCallback(async () => {
@@ -352,8 +374,10 @@ export function QrScannerModal({
         }
 
         const photo = await Camera.getPhoto({
-          quality: 90,
+          quality: 85,
+          width: 1600,
           allowEditing: false,
+          correctOrientation: true,
           resultType: CameraResultType.DataUrl,
           source: CameraSource.Camera,
         });
@@ -407,21 +431,27 @@ export function QrScannerModal({
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+    const now = performance.now();
+    // ~8 decodes per second is plenty and keeps the UI fluid on low-end phones
+    if (video && canvas && video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth > 0 && now - lastScanTsRef.current > 120) {
+      lastScanTsRef.current = now;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (ctx) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Downscale to max 720px: jsQR on full-resolution frames is very slow
+        const scale = Math.min(1, 720 / Math.max(video.videoWidth, video.videoHeight));
+        const w = Math.round(video.videoWidth * scale);
+        const h = Math.round(video.videoHeight * scale);
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        ctx.drawImage(video, 0, 0, w, h);
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, w, h);
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
+          inversionAttempts: "attemptBoth",
         });
 
         if (code && code.data) {
-          handleDecodedData(code.data);
-          return;
+          if (handleDecodedData(code.data, true)) return;
         }
       }
     }
@@ -444,31 +474,21 @@ export function QrScannerModal({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            setIsProcessingFile(false);
-            return;
-          }
-
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "attemptBoth",
-          });
-
+          const data = decodeQrFromImageElement(img);
           setIsProcessingFile(false);
 
-          if (code && code.data) {
-            handleDecodedData(code.data);
+          if (data) {
+            setCameraError(null);
+            handleDecodedData(data);
           } else {
             setCameraError(
               "No se detectó ningún código QR legible en la imagen. Enfoca más cerca y con buena iluminación o escribe el PIN."
             );
           }
+        };
+        img.onerror = () => {
+          setIsProcessingFile(false);
+          setCameraError("No se pudo abrir la imagen seleccionada.");
         };
         img.src = event.target?.result as string;
       };
@@ -492,12 +512,15 @@ export function QrScannerModal({
       return;
     }
 
-    const payload = JSON.stringify({
-      app: "cajamaster",
-      action: "pair",
-      roomKey: cleanCode,
-      role: "waiter",
-    });
+    // "PIN@IP" (local Wi-Fi) is parsed as text; a bare PIN as a JSON payload
+    const payload = /[@\s]\d{1,3}(\.\d{1,3}){3}/.test(cleanCode)
+      ? cleanCode
+      : JSON.stringify({
+          app: "cajamaster",
+          action: "pair",
+          roomKey: cleanCode,
+          role: "secondary",
+        });
 
     try {
       const pairRes = syncService.pairFromQrCode(payload);
@@ -526,6 +549,9 @@ export function QrScannerModal({
   // Ciclo de vida
   useEffect(() => {
     if (isOpen) {
+      handledRef.current = false;
+      lastRejectedRef.current = "";
+      setScanHint(null);
       setIsScanning(true);
       setScannedResult(null);
       setManualError(null);
@@ -697,6 +723,11 @@ export function QrScannerModal({
               <p className="text-[11px] font-bold text-amber-300 mt-4 bg-black/60 px-3 py-1 rounded-full backdrop-blur-xs shadow-md">
                 Enfoca el código QR de sincronización
               </p>
+              {scanHint && (
+                <p className="text-[11px] font-semibold text-rose-200 mt-2 bg-rose-950/80 px-3 py-1.5 rounded-xl max-w-xs text-center">
+                  {scanHint}
+                </p>
+              )}
             </div>
           )}
 
@@ -781,7 +812,7 @@ export function QrScannerModal({
                   type="text"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="Ej: POS-7821 o SALA-01"
+                  placeholder="Ej: CM-7821 o CM-7821@192.168.1.10"
                   autoFocus
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-white font-mono text-sm placeholder:text-slate-500 uppercase focus:outline-none focus:border-amber-400"
                 />
