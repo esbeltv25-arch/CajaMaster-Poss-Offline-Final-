@@ -497,7 +497,7 @@ export function CierreCajaScreen() {
                   type="number"
                   value={openingCash}
                   onChange={(e) => setOpeningCash(parseFloat(e.target.value || "0"))}
-                  className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
+                  className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
             </div>
@@ -524,7 +524,7 @@ export function CierreCajaScreen() {
                     setCountedCash(e.target.value === "" ? "" : parseFloat(e.target.value))
                   }
                   placeholder={String(expectedCashInDrawer)}
-                  className="flex-1 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
+                  className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
             </div>
@@ -533,9 +533,9 @@ export function CierreCajaScreen() {
           {/* Interactive Cuban Denominations Calculator Card */}
           {showDenomCalculator && (
             <div className="p-4 rounded-2xl bg-[var(--color-card-bg)] border-2 border-amber-400/80 shadow-sm space-y-3 animate-pop">
-              <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2">
-                <div>
-                  <h4 className="font-extrabold text-xs text-[var(--color-ink)] flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-2">
+                <div className="min-w-0">
+                  <h4 className="font-extrabold text-xs text-[var(--color-ink)] flex flex-wrap items-center gap-1.5">
                     <span>💵 Calculadora de Billetes de Cuba</span>
                     <span className="bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full text-[9px] font-black uppercase">
                       Incluye $10.000 y $20.000
@@ -554,7 +554,7 @@ export function CierreCajaScreen() {
               </div>
 
               {/* Grid of Denominations */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2">
                 {CUBAN_DENOMINATIONS.map((d) => {
                   const currentCount = billCounts[d.value] || "";
                   const subtotal = (Number(currentCount) || 0) * d.value;
@@ -568,8 +568,8 @@ export function CierreCajaScreen() {
                           : "bg-slate-50 border-slate-200"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-slate-900">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="font-black text-xs text-slate-900 whitespace-nowrap">
                           ${d.value.toLocaleString("es-ES")}
                         </span>
                         {d.isNew && (

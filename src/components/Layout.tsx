@@ -46,11 +46,11 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         className={`h-[100dvh] md:min-h-screen w-full flex flex-col bg-gradient-to-br ${theme.bgGradient} p-0 md:p-6 transition-all duration-300 font-sans overflow-hidden md:overflow-auto`}
       >
         {/* Counter Top Utility Bar (Visible on Tablet/Desktop screens) */}
-        <div className="hidden md:flex w-full max-w-7xl mx-auto mb-3 items-center justify-between px-4 py-2 bg-[var(--color-card-bg)]/90 backdrop-blur-md rounded-2xl border border-black/5 dark:border-white/10 shadow-xs shrink-0">
+        <div className="hidden md:flex flex-wrap gap-2 w-full max-w-7xl mx-auto mb-3 items-center justify-between px-4 py-2 bg-[var(--color-card-bg)]/90 backdrop-blur-md rounded-2xl border border-black/5 dark:border-white/10 shadow-xs shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <AppLogo size={28} rounded="rounded-xl" />
-              <span className="text-xs text-[var(--color-ink)] font-extrabold hidden sm:inline tracking-tight">
+              <span className="text-xs text-[var(--color-ink)] font-extrabold hidden lg:inline tracking-tight truncate max-w-[180px]">
                 {state.business.name || "CajaMaster POS"}
               </span>
             </div>
@@ -83,7 +83,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
               title="Alertas de Inventario"
             >
               <IconBellRing size={14} className={lowStockCount > 0 ? "text-rose-600 animate-bounce" : ""} />
-              <span>Alertas</span>
+              <span className="hidden lg:inline">Alertas</span>
               {lowStockCount > 0 && (
                 <span className="bg-rose-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-0.5">
                   {lowStockCount}
@@ -114,7 +114,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
               title="Copias de Seguridad"
             >
               <IconDownload size={14} />
-              <span className="hidden md:inline">Respaldos</span>
+              <span className="hidden lg:inline">Respaldos</span>
             </button>
 
             <button
@@ -123,21 +123,21 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
               title="Ajustes y Configuración"
             >
               <IconSettings size={14} />
-              <span className="hidden sm:inline">Ajustes</span>
+              <span className="hidden lg:inline">Ajustes</span>
             </button>
 
             <button
               onClick={() => setIsThemePickerOpen(true)}
               className="px-3 py-1 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-slate-800 transition cursor-pointer shadow-xs"
             >
-              <span>🎨</span> <span className="hidden sm:inline">Ambiente</span>
+              <span>🎨</span> <span className="hidden lg:inline">Ambiente</span>
             </button>
           </div>
         </div>
 
         {/* Counter / Tablet Container */}
         <div
-          className="w-full max-w-7xl mx-auto rounded-none md:rounded-[36px] shadow-2xl border-0 md:border md:border-white/40 overflow-hidden flex-1 flex flex-col relative h-[100dvh] md:h-auto md:min-h-[760px]"
+          className="app-container w-full max-w-7xl mx-auto rounded-none md:rounded-[36px] shadow-2xl border-0 md:border md:border-white/40 overflow-hidden flex-1 flex flex-col relative h-[100dvh] md:h-auto md:min-h-[760px]"
           style={{ backgroundColor: theme.frameBg }}
         >
           {children}
@@ -170,7 +170,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
       className={`h-[100dvh] w-full flex items-stretch md:items-center justify-center bg-gradient-to-br ${theme.bgGradient} p-0 md:p-3 transition-all duration-300 font-sans overflow-hidden`}
     >
       <div
-        className="w-full h-full max-h-[100dvh] md:h-full md:max-h-[min(890px,calc(100dvh-1.5rem))] md:max-w-[440px] md:rounded-[40px] md:shadow-[0_20px_70px_-15px_rgba(0,0,0,0.35)] md:border md:border-white/60 overflow-hidden flex flex-col relative transition-all duration-300"
+        className="app-container w-full h-full max-h-[100dvh] md:h-full md:max-h-[min(890px,calc(100dvh-1.5rem))] md:max-w-[440px] md:rounded-[40px] md:shadow-[0_20px_70px_-15px_rgba(0,0,0,0.35)] md:border md:border-white/60 overflow-hidden flex flex-col relative transition-all duration-300"
         style={{ backgroundColor: theme.frameBg }}
       >
         {children}
@@ -202,12 +202,12 @@ export function TopBar({
   return (
     <>
       <div
-        className="px-3 sm:px-4 pt-3.5 sm:pt-4 md:pt-3 pb-2.5 flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 border-b border-black/5"
+        className="px-3 sm:px-4 pt-3.5 sm:pt-4 md:pt-3 pb-2.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 shrink-0 border-b border-black/5"
         style={{
           paddingTop: "max(calc(env(safe-area-inset-top, 0px) + var(--app-safe-top, 0px) + 0.65rem), 2.85rem)",
         }}
       >
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-[7rem] flex-1">
           {onBack && (
             <button
               onClick={onBack}
@@ -228,7 +228,7 @@ export function TopBar({
               </svg>
             </button>
           )}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[7rem] flex-1">
             <h1 className="text-[var(--color-ink)] font-black text-xs sm:text-base md:text-lg leading-tight truncate tracking-tight">
               {title}
             </h1>
@@ -241,7 +241,7 @@ export function TopBar({
         </div>
 
         {/* Action Bar: Unified, strictly contained within the mobile frame with ZERO horizontal overflow */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-1.5 shrink-0 max-w-full ml-auto">
           {right}
 
           {/* Active Alerts Bell (always visible if there are alerts, or on larger screens) */}

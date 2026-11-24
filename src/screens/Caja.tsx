@@ -1989,7 +1989,7 @@ function UnifiedTicketAndCheckout({
                   setCashPaid(e.target.value === "" ? "" : parseFloat(e.target.value))
                 }
                 placeholder="0"
-                className="flex-1 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
+                className="flex-1 min-w-0 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
               />
             </div>
             <p className="text-[11px] font-semibold text-slate-500">
@@ -2025,7 +2025,7 @@ function UnifiedTicketAndCheckout({
                   setCashPaid(e.target.value === "" ? "" : parseFloat(e.target.value))
                 }
                 placeholder={String(ticket.total)}
-                className="flex-1 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
+                className="flex-1 min-w-0 bg-transparent outline-none font-black text-base text-[var(--color-ink)]"
               />
               {cashPaid !== "" && (
                 <button
@@ -2039,7 +2039,7 @@ function UnifiedTicketAndCheckout({
             </div>
 
             {/* Quick Bills Row (Cuban Denominations: 100 to 20.000) */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-0.5">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-1 pt-0.5">
               {QUICK_CASH_AMOUNTS.map((amt) => {
                 const label = amt >= 1000 ? `+$${amt.toLocaleString("es-ES")}` : `+$${amt}`;
                 return (

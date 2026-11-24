@@ -3,6 +3,22 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Responsive breakpoints follow the width of the APP, not of the browser window.
+ * In "phone" mode on a desktop the app lives in a ~430px frame: with normal media
+ * queries it received tablet/desktop layouts (4 columns, side-by-side rows) and the
+ * text overflowed. #root and the app frame are named "app" containers, so every
+ * sm:/md:/lg:/xl:/2xl: class resolves against the nearest one.
+ */
+@custom-variant sm (@container app (width >= 40rem));
+@custom-variant md (@container app (width >= 48rem));
+@custom-variant lg (@container app (width >= 64rem));
+@custom-variant xl (@container app (width >= 80rem));
+@custom-variant 2xl (@container app (width >= 96rem));
+@custom-variant max-sm (@container app (width < 40rem));
+@custom-variant max-md (@container app (width < 48rem));
+@custom-variant max-lg (@container app (width < 64rem));
+
 @theme {
   --color-bg: #F1EFE8;
   --color-bg-soft: #E8E5DC;
@@ -12,6 +28,14 @@
   --color-gold-deep: #E8A911;
   --color-danger: #EF4444;
   --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  container: app / inline-size;
+}
+
+.app-container {
+  container: app / inline-size;
 }
 
 html, body, #root {
