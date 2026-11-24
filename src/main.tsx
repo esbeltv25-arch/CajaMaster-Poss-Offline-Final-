@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
+import { initDeviceIdentity } from './utils/licenseSecurity';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
@@ -46,8 +46,15 @@ if (Capacitor.isNativePlatform()) {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// The device identity (used by licensing and multi-device sync) must be resolved
+// BEFORE the app modules load, so App is imported only afterwards.
+initDeviceIdentity()
+  .catch(() => undefined)
+  .then(() => import('./App.tsx'))
+  .then(({ default: App }) => {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  });

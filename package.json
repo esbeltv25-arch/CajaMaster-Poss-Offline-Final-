@@ -9,13 +9,15 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "license": "node scripts/generate-license.js",
+    "license": "tsx scripts/license.ts",
     "generate:keystore": "bash scripts/generate-release-keystore.sh",
     "release:ota": "node scripts/package-ota.js",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
-    "cap:build": "npm run build && npx cap sync android",
-    "lint": "tsc --noEmit"
+    "cap:build": "node scripts/check-license-key.mjs && npm run build && npx cap sync android",
+    "lint": "tsc --noEmit",
+    "license:keygen": "tsx scripts/license.ts keygen",
+    "license:generator": "node scripts/build-license-generator.mjs"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.3.0",
@@ -25,6 +27,8 @@
     "@capacitor/filesystem": "^8.1.3",
     "@capacitor/share": "^8.0.3",
     "@google/genai": "^2.4.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",

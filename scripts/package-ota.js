@@ -26,6 +26,13 @@ const GITHUB_USER = "esbeltv25-arch";
 const GITHUB_REPO = "CajaMaster-Updates";
 const BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main`;
 
+// 0. Never publish a bundle without the licensing public key (nobody could activate it)
+try {
+  execSync("node scripts/check-license-key.mjs", { cwd: rootDir, stdio: "inherit" });
+} catch {
+  process.exit(1);
+}
+
 // 1. Read existing version.json or set defaults
 let currentManifest = {
   version: "1.3.0",

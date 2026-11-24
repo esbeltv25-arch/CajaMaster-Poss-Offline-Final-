@@ -73,7 +73,7 @@ import { QuickStartGuideModal, type GuideSection } from "../components/QuickStar
 import { OtaUpdateModal, type OtaModalTab } from "../components/OtaUpdateModal";
 import { ScreenCalibrationModal } from "../components/ScreenCalibrationModal";
 import { getOtaConfig, downloadLatestZipDirectly } from "../services/otaUpdateService";
-import { getLicenseStatus, revokeLicense, validateLicenseKey } from "../utils/licenseSecurity";
+import { getLicenseStatus, revokeLicense, validateLicenseKey, formatLicenseExpiry } from "../utils/licenseSecurity";
 import { generateUserManualPdf } from "../utils/userManualPdf";
 import { PrinterSelectionModal } from "../components/PrinterSelectionModal";
 import { PWAInstallCard } from "../components/PWAInstallBanner";
@@ -1627,7 +1627,7 @@ export function AjustesScreen({
           {licenseAuditToast && (
             <div className="p-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-2 animate-pop">
               <IconCheck size={14} className="shrink-0" />
-              <span>Firma HMAC-SHA256 íntegra y válida para este dispositivo.</span>
+              <span>Firma digital Ed25519 verificada y válida para este dispositivo.</span>
             </div>
           )}
 
@@ -1659,10 +1659,15 @@ export function AjustesScreen({
               <span className="text-[10px] tracking-widest font-bold text-slate-500 uppercase">
                 CLAVE DE ACTIVACIÓN REGISTRADA
               </span>
-              <span className="text-[9.5px] font-bold text-emerald-700">HMAC-SHA256</span>
+              <span className="text-[9.5px] font-bold text-emerald-700">Firma Ed25519</span>
             </div>
-            <div className="font-mono text-xs font-black text-emerald-900 tracking-wider">
-              {licenseStatus.licenseKey || "A1B2-C3D4-E5F6"}
+            <div className="font-mono text-[10px] font-black text-emerald-900 tracking-wide break-all leading-relaxed">
+              {licenseStatus.licenseKey || "—"}
+            </div>
+            <div className="text-[10px] font-bold pt-0.5 text-slate-600">
+              {licenseStatus.expiresAt
+                ? `Válida hasta el ${formatLicenseExpiry(licenseStatus.expiresAt)} (inclusive)`
+                : "Licencia permanente (sin caducidad)"}
             </div>
             {licenseStatus.activatedAt && (
               <div className="text-[10px] text-slate-500 pt-0.5">

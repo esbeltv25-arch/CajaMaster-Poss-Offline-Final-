@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -78,6 +79,28 @@ public class CajaNativePlugin extends Plugin {
 
         JSObject ret = new JSObject();
         ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
+    /**
+     * Stable per-device identifier for licensing (Settings.Secure.ANDROID_ID).
+     * It is unique per device + app signing key and survives clearing data and
+     * reinstalling the app (it only changes on a factory reset).
+     */
+    @PluginMethod
+    public void getHardwareId(PluginCall call) {
+        String id = null;
+        try {
+            id = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+        } catch (Exception e) {
+            Log.w(TAG, "ANDROID_ID not available", e);
+        }
+        if (id == null || id.isEmpty()) {
+            call.reject("ANDROID_ID not available");
+            return;
+        }
+        JSObject ret = new JSObject();
+        ret.put("id", id);
         call.resolve(ret);
     }
 

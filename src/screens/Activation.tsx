@@ -4,10 +4,9 @@ import { AppLogo } from "../components/AppLogo";
 import { openTelegramShare } from "../utils/telegramSharing";
 import { openWhatsAppUniversal, openTelegramUniversal } from "../utils/universalShare";
 import {
-  validateLicenseKey,
   saveLicenseActivation,
   getPersistentDeviceId,
-  calculateExpectedLicense,
+  licenseErrorMessage,
 } from "../utils/licenseSecurity";
 
 export { getPersistentDeviceId as getDeviceId };
@@ -34,16 +33,15 @@ export function ActivationScreen({
     // Small timeout for smooth feedback
     setTimeout(() => {
       try {
-        const isValid = validateLicenseKey(cleanDeviceId, licenseKey);
-
-        if (isValid) {
-          saveLicenseActivation(licenseKey);
+        // Verifies the digital signature and stores the license only if valid
+        const check = saveLicenseActivation(licenseKey);
+        if (check.valid) {
           setSuccessAnim(true);
           setTimeout(() => {
             onActivated();
           }, 600);
         } else {
-          setError("Licencia o contraseña no válida para este dispositivo.");
+          setError(licenseErrorMessage(check));
         }
       } catch (err) {
         console.error("Error al validar licencia:", err);
@@ -52,22 +50,6 @@ export function ActivationScreen({
         setIsValidating(false);
       }
     }, 250);
-  };
-
-  const handleAutoActivateForSimulator = () => {
-    try {
-      const expected = calculateExpectedLicense(cleanDeviceId);
-      if (expected.formatted) {
-        setLicenseKey(expected.formatted);
-        saveLicenseActivation(expected.formatted);
-        setSuccessAnim(true);
-        setTimeout(() => {
-          onActivated();
-        }, 400);
-      }
-    } catch (e) {
-      console.warn("Simulator auto-activation error", e);
-    }
   };
 
   const handleCopyDeviceId = () => {
@@ -84,7 +66,7 @@ export function ActivationScreen({
       if (navigator.clipboard?.readText) {
         const text = await navigator.clipboard.readText();
         if (text) {
-          setLicenseKey(text.trim().toUpperCase());
+          setLicenseKey(text.trim().toUpperCase().replace(/\s+/g, ""));
           setError(null);
         }
       }
@@ -214,12 +196,12 @@ export function ActivationScreen({
           </div>
 
           <p className="text-[11.5px] text-white/75 leading-relaxed mb-3">
-            Ingrese la contraseña o código de activación de 12 caracteres recibido:
+            Pegue la licencia completa que le envió su proveedor (empieza por <span className="font-mono font-bold text-amber-300">CM1-</span>). Es larga: use «Pegar clave» en lugar de escribirla.
           </p>
 
-          <div className="bg-black/40 border border-white/15 rounded-xl flex items-center gap-2 px-3 h-14 mb-3 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30 transition">
-            <IconKey size={20} className="text-amber-400 shrink-0" />
-            <input
+          <div className="bg-black/40 border border-white/15 rounded-xl flex items-start gap-2 px-3 py-2.5 mb-3 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30 transition">
+            <IconKey size={20} className="text-amber-400 shrink-0 mt-0.5" />
+            <textarea
               id="input-license-key"
               value={licenseKey}
               onChange={(e) => {
@@ -227,13 +209,14 @@ export function ActivationScreen({
                 if (error) setError(null);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && licenseKey.trim() && !isValidating) {
-                  handleActivate();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (licenseKey.trim() && !isValidating) handleActivate();
                 }
               }}
-              placeholder="Ej: A1B2-C3D4-E5F6"
-              className="flex-1 bg-transparent outline-none font-mono font-bold text-base tracking-widest text-white placeholder:text-white/25 uppercase"
-              autoFocus
+              rows={4}
+              placeholder="CM1-XXXXXX-XXXXXX-..."
+              className="flex-1 bg-transparent outline-none font-mono font-bold text-xs leading-relaxed tracking-wide text-white placeholder:text-white/25 uppercase resize-none break-all"
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck="false"
@@ -278,27 +261,16 @@ export function ActivationScreen({
             )}
           </button>
 
-          {/* Acceso Rápido para Simulador / Pruebas */}
-          <div className="mt-3 pt-3 border-t border-white/10 text-center">
-            <button
-              type="button"
-              onClick={handleAutoActivateForSimulator}
-              className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-amber-300 hover:text-amber-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-400/20"
-            >
-              <IconKey size={14} />
-              <span>⚡ Activar Terminal en Simulador / Pruebas</span>
-            </button>
-          </div>
         </div>
 
         {/* Security & Offline Policy */}
         <div className="text-center space-y-2 text-white/70 text-xs px-2">
           <div className="flex items-center justify-center gap-1.5 text-amber-300/80 text-[11px] font-bold">
             <IconLock size={13} />
-            <span>Validación HMAC-SHA256 Offline • Licencia Perpetua</span>
+            <span>Firma digital Ed25519 • Validación 100% offline</span>
           </div>
           <p className="text-[10.5px] text-white/45 leading-relaxed">
-            Una vez activada, la aplicación funcionará de manera permanente en este equipo sin requerir conexión a internet.
+            Una vez activada, la aplicación funciona en este equipo sin conexión a internet durante todo el periodo de su licencia.
           </p>
         </div>
       </div>

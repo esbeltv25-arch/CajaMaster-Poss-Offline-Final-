@@ -1,94 +1,89 @@
-# 🔐 Sistema de Control y Generación de Licencias - CajaMaster
+# 🔐 Control de Licencias de CajaMaster POS
 
-Este sistema te permite controlar al 100% quién tiene acceso a la aplicación desde tu Mac de forma completamente offline y segura.
+CajaMaster usa **firmas digitales Ed25519** para las licencias. Funciona 100 % sin internet y está pensado para venderse a clientes sin que puedan generar claves por su cuenta.
 
----
+## Cómo funciona (en una frase)
 
-## 🚀 ¿Cómo funciona el flujo de activación?
+Tienes **dos claves**:
 
-1. **El cliente instala y abre CajaMaster**:
-   - Al abrir la app por primera vez, verá la pantalla de **Activación de Licencia**.
-   - La pantalla le muestra su **ID de Dispositivo único** (ejemplo: `CM-9K2L-M4N8-8F2Q`).
-   - El cliente presiona el botón **"💬 Enviar ID por WhatsApp al Administrador"** o **"Copiar ID"** y te lo envía.
+| Clave | Dónde está | Para qué sirve |
+| --- | --- | --- |
+| 🔒 **Privada** | Solo en tu ordenador: `.license/private-key.json` | **Crear** licencias. Quien la tenga puede emitir licencias: guárdala bien. |
+| 🔓 **Pública** | Dentro de la app: `src/utils/licensePublicKey.ts` | **Comprobar** licencias. No sirve para crearlas, aunque alguien desmonte el APK. |
 
-2. **Tú generas la clave desde tu Mac**:
-   - Introduces el ID del dispositivo en tu script o herramienta en tu Mac.
-   - El script genera la clave única correspondiente (ejemplo: `A8F1-3C90-D42E-7B11`) y la copia automáticamente a tu portapapeles.
-
-3. **Le envías la clave al cliente**:
-   - El cliente pega o escribe la clave en la app y pulsa **"ACTIVAR PERMANENTEMENTE"**.
-   - **¡Listo!** La app queda desbloqueada para siempre en ese dispositivo. No vuelve a pedir clave a menos que borre la app por completo.
+Cada licencia va firmada para **un único dispositivo**: copiarla en otro teléfono no funciona. Puede ser **permanente** o tener **fecha de caducidad** (suscripciones).
 
 ---
 
-## 🛠️ Opciones para generar claves desde tu Mac
-
-Puedes usar cualquiera de los siguientes métodos según lo que te sea más cómodo:
-
----
-
-### Opción 1: Script en Bash/Zsh de macOS (Sin instalar nada)
-
-Abre la aplicación **Terminal** en tu Mac y ejecuta:
+## 1. Configuración inicial (una sola vez)
 
 ```bash
-./scripts/generate-license.sh
+npm install
+npm run license:keygen
 ```
 
-O si ya tienes el ID del cliente copiado:
-```bash
-./scripts/generate-license.sh CM-9K2L-M4N8-8F2Q
-```
-*(El script copiará la clave generada automáticamente a tu portapapeles con `pbcopy`).*
+Esto:
+- crea tu clave privada en `.license/private-key.json` (excluida de Git, nunca se sube a GitHub);
+- escribe tu clave pública en `src/utils/licensePublicKey.ts`.
+
+Después:
+1. **Haz copia de seguridad de `.license/private-key.json`** (por ejemplo en un USB y en un gestor de contraseñas). Si la pierdes no podrás emitir licencias para las apps ya instaladas.
+2. Haz commit de `src/utils/licensePublicKey.ts` y compila la app (APK y/o OTA).
+3. Genera tu herramienta visual: `npm run license:generator` → crea `Generador_CajaMaster_POS.html`.
+
+> El comando se niega a crear una clave nueva si ya existe una, porque eso **invalidaría todas las licencias vendidas**. Solo con `npm run license:keygen -- --force` la reemplaza.
+
+> Las compilaciones de publicación (`npm run cap:build`, `npm run release:ota` y el flujo automático de GitHub) **se detienen** si la app no tiene clave pública, para no publicar nunca una versión que nadie pueda activar.
 
 ---
 
-### Opción 2: Script en Python 3
+## 2. Vender una licencia
 
-En la Terminal de tu Mac:
+1. El cliente instala la app. En la pantalla de activación ve su **ID de dispositivo** (ej. `CM-B14G-0Q44-V0ZB`) y te lo envía con el botón de WhatsApp o Telegram.
+2. Generas la licencia con una de estas dos opciones:
 
+**Opción A — Generador visual** (recomendado; funciona sin internet en cualquier navegador):
+- Abre `Generador_CajaMaster_POS.html`.
+- La primera vez, carga tu archivo `.license/private-key.json`. Queda guardado solo en ese navegador.
+- Escribe el ID del cliente, elige la duración (permanente, 30 días, 1 año, hasta una fecha…) y pulsa **Generar licencia**.
+- Envíala con **Enviar por WhatsApp / Telegram** o cópiala.
+- El generador guarda un registro de las licencias emitidas, exportable a CSV.
+
+**Opción B — Terminal:**
 ```bash
-python3 scripts/generate-license.py
+npm run license -- sign CM-B14G-0Q44-V0ZB                       # permanente
+npm run license -- sign CM-B14G-0Q44-V0ZB --days 365            # un año
+npm run license -- sign CM-B14G-0Q44-V0ZB --until 2027-12-31    # hasta una fecha
+npm run license -- sign CM-B14G-0Q44-V0ZB --cliente "Bar Pepe"  # anota el cliente en tu registro
+npm run license -- verify CM-B14G-0Q44-V0ZB CM1-...             # comprobar una licencia
+npm run license -- list                                          # licencias emitidas desde este equipo
 ```
 
-O directamente con el ID como argumento:
-```bash
-python3 scripts/generate-license.py CM-9K2L-M4N8-8F2Q
-```
+3. El cliente pulsa **Pegar clave** y luego **ACTIVAR LICENCIA**. La licencia es larga (empieza por `CM1-`): se pega, no se escribe a mano.
 
 ---
 
-### Opción 3: Script en Node.js
+## 3. Renovaciones y caducidad
 
-En la Terminal:
-
-```bash
-node scripts/generate-license.js
-```
-
-O con el ID:
-```bash
-node scripts/generate-license.js CM-9K2L-M4N8-8F2Q
-```
+- Una licencia con fecha vale hasta el final del día indicado (inclusive). Al caducar, la app vuelve a la pantalla de activación y el cliente te pide una nueva. Sus datos (ventas, productos) **no se borran**.
+- Atrasar el reloj del teléfono no alarga la licencia: la app recuerda la fecha más reciente que ha visto.
+- Para renovar, genera otra licencia para el mismo ID con la nueva fecha.
 
 ---
 
-### Opción 4: Herramienta Gráfica Web Offline (Doble Clic)
+## 4. El ID del dispositivo
 
-Si prefieres no usar la Terminal, puedes abrir el archivo:
-
-📂 `public/generador-licencias.html`
-
-Haciendo doble clic para abrirlo en **Safari** o **Google Chrome** en tu Mac.
-- Pegas el ID del dispositivo.
-- Presionas **"Generar Clave de Activación"**.
-- Presionas **"Copiar Clave"** y se la envías por WhatsApp/Telegram.
-- Funciona 100% offline, sin necesidad de servidores.
+- En Android se calcula a partir del identificador del sistema (`ANDROID_ID`). **Se mantiene** aunque el cliente borre los datos o reinstale la app; solo cambia con un restablecimiento de fábrica del teléfono o si cambias la firma del APK.
+- En navegador o PWA el ID es aleatorio y se guarda en el navegador: borrar los datos del navegador genera uno nuevo.
 
 ---
 
-## 🔒 Seguridad del Algoritmo
-- La clave se genera mediante el algoritmo criptográfico estándar **SHA-256** combinando el ID único del dispositivo con una clave maestra secreta (`CAJAMASTER_2026`).
-- Cada dispositivo genera una clave completamente distinta.
-- Una clave generada para el teléfono A jamás funcionará en el teléfono B.
-- No requiere base de datos ni conexión a internet: tanto el script en tu Mac como la app en el dispositivo cliente calculan la correspondencia matemáticamente.
+## 5. Qué protege y qué no
+
+✅ **Protege contra:**
+- generar licencias sin tu clave privada (aunque se desmonte el APK);
+- usar una licencia en otro dispositivo;
+- alterar una licencia (por ejemplo, convertir una de 30 días en permanente);
+- activar la app manipulando su almacenamiento.
+
+⚠️ **No protege al 100 % contra:** alguien con conocimientos técnicos que **modifique el código del APK** para saltarse la comprobación. Eso pasa con cualquier app que funciona sin internet. Reducirlo exigiría validación en un servidor, ofuscación del código o la integridad de Google Play, y no merece la pena para la mayoría de clientes.
