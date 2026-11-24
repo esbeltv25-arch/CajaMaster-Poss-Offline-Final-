@@ -41,6 +41,12 @@ export function ReceiptModal({
   onClose,
 }: ReceiptModalProps) {
   const state = useStore();
+  // The receipt shows the sale in the currency it was charged in, with the rate of that moment
+  const saleCurrency = (sale as any)?.currency || "CUP";
+  const saleRates =
+    saleCurrency !== "CUP" && (sale as any)?.exchangeRate
+      ? { ...state.rates, [saleCurrency]: (sale as any).exchangeRate }
+      : state.rates;
   const biz = state.business;
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -88,9 +94,9 @@ export function ReceiptModal({
     text += `📅 ${dateStr}\n\n`;
     text += `*Artículos:*\n`;
     sale.items.forEach((it) => {
-      text += `• ${it.qty} ${it.unit || "u"} x ${it.name} = ${formatCurrency(it.qty * it.price, "CUP", state.rates)}\n`;
+      text += `• ${it.qty} ${it.unit || "u"} x ${it.name} = ${formatCurrency(it.qty * it.price, saleCurrency, saleRates)}\n`;
     });
-    text += `\n*TOTAL PAGADO:* ${formatCurrency(sale.total, "CUP", state.rates)}\n`;
+    text += `\n*TOTAL PAGADO:* ${formatCurrency(sale.total, saleCurrency, saleRates)}\n`;
     text += `Método: ${String(sale.paymentMethod).toUpperCase()}\n`;
     if (sale.gatewayReference) {
       text += `Ref: ${sale.gatewayReference}\n`;
@@ -278,11 +284,11 @@ export function ReceiptModal({
                 <div className="flex-1 pr-2">
                   <div className="font-extrabold text-slate-900">{it.name}</div>
                   <div className="text-[10.5px] text-slate-500 font-sans">
-                    {it.qty} {it.unit || "u"} x {formatCurrency(it.price, "CUP", state.rates)}
+                    {it.qty} {it.unit || "u"} x {formatCurrency(it.price, saleCurrency, saleRates)}
                   </div>
                 </div>
                 <div className="font-black text-slate-900 whitespace-nowrap">
-                  {formatCurrency(it.qty * it.price, "CUP", state.rates)}
+                  {formatCurrency(it.qty * it.price, saleCurrency, saleRates)}
                 </div>
               </div>
             ))}
@@ -292,19 +298,19 @@ export function ReceiptModal({
           <div className="space-y-1.5 border-b border-dashed border-slate-300 pb-3">
             <div className="flex justify-between text-xs text-slate-600">
               <span>Subtotal:</span>
-              <span>{formatCurrency(sale.subtotal || sale.total, "CUP", state.rates)}</span>
+              <span>{formatCurrency(sale.subtotal || sale.total, saleCurrency, saleRates)}</span>
             </div>
 
             {sale.discount > 0 && (
               <div className="flex justify-between text-xs text-rose-600 font-bold">
                 <span>Descuento:</span>
-                <span>-{formatCurrency(sale.discount, "CUP", state.rates)}</span>
+                <span>-{formatCurrency(sale.discount, saleCurrency, saleRates)}</span>
               </div>
             )}
 
             <div className="flex justify-between text-sm font-black text-slate-950 pt-1">
               <span>TOTAL PAGADO:</span>
-              <span className="text-base text-slate-950">{formatCurrency(sale.total, "CUP", state.rates)}</span>
+              <span className="text-base text-slate-950">{formatCurrency(sale.total, saleCurrency, saleRates)}</span>
             </div>
 
             {/* Method of payment */}
@@ -356,24 +362,39 @@ export function ReceiptModal({
             )}
 
             {/* Multi-currency equivalent for customer transparency */}
-            <div className="flex justify-between text-[10.5px] text-slate-500 font-sans pt-0.5">
-              <span>Equiv. en USD:</span>
-              <span>{formatCurrency(sale.total, "USD", state.rates)}</span>
-            </div>
-            <div className="flex justify-between text-[10.5px] text-slate-500 font-sans">
-              <span>Equiv. en EUR:</span>
-              <span>{formatCurrency(sale.total, "EUR", state.rates)}</span>
-            </div>
+            {saleCurrency !== "CUP" ? (
+              <>
+                <div className="flex justify-between text-[10.5px] text-slate-500 font-sans pt-0.5">
+                  <span>Equiv. en CUP:</span>
+                  <span>{formatCurrency(sale.total, "CUP", saleRates)}</span>
+                </div>
+                <div className="flex justify-between text-[10.5px] text-slate-500 font-sans">
+                  <span>Tasa aplicada:</span>
+                  <span>1 {saleCurrency} = {formatCurrency(saleRates[saleCurrency as keyof typeof saleRates] || 1, "CUP", saleRates)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-[10.5px] text-slate-500 font-sans pt-0.5">
+                  <span>Equiv. en USD:</span>
+                  <span>{formatCurrency(sale.total, "USD", state.rates)}</span>
+                </div>
+                <div className="flex justify-between text-[10.5px] text-slate-500 font-sans">
+                  <span>Equiv. en EUR:</span>
+                  <span>{formatCurrency(sale.total, "EUR", state.rates)}</span>
+                </div>
+              </>
+            )}
 
             {sale.cashPaid !== undefined && sale.cashPaid > 0 && (
               <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
                 <div className="flex justify-between text-xs text-slate-700">
                   <span>Efectivo Entregado:</span>
-                  <span>{formatCurrency(sale.cashPaid, "CUP", state.rates)}</span>
+                  <span>{formatCurrency(sale.cashPaid, saleCurrency, saleRates)}</span>
                 </div>
                 <div className="flex justify-between text-xs font-bold text-emerald-700">
                   <span>Cambio devuelto:</span>
-                  <span className="font-black">{formatCurrency(sale.change || 0, "CUP", state.rates)}</span>
+                  <span className="font-black">{formatCurrency(sale.change || 0, saleCurrency, saleRates)}</span>
                 </div>
               </div>
             )}
@@ -414,7 +435,7 @@ export function ReceiptModal({
         handleExecutePrint(selectedPrinter);
       }}
       title="Seleccionar Impresora para Ticket"
-      subtitle={`Venta #${sale.ticketNumber || String(sale.id).slice(-4)} - ${formatCurrency(sale.total, "CUP", state.rates)}`}
+      subtitle={`Venta #${sale.ticketNumber || String(sale.id).slice(-4)} - ${formatCurrency(sale.total, saleCurrency, saleRates)}`}
     />
 
     {/* Universal Storage Destination Dialog for Ticket */}

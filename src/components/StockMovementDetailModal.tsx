@@ -1,3 +1,4 @@
+import { getDisplayCurrency } from "../store";
 import React from "react";
 import type { Movement, BusinessInfo, ExchangeRates } from "../types";
 import {
@@ -181,13 +182,13 @@ export const StockMovementDetailModal: React.FC<StockMovementDetailModalProps> =
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Costo Unitario de Adquisición</span>
               <span className="font-semibold text-white">
-                {formatCurrency(movement.unitCost || 0, "CUP", rates)}
+                {formatCurrency(movement.unitCost || 0, getDisplayCurrency(), rates)}
               </span>
             </div>
             <div className="flex items-center justify-between border-t border-slate-700/50 pt-1.5">
               <span className="text-slate-400">Impacto Total en Valor</span>
               <span className="font-bold text-amber-400">
-                {formatCurrency(totalCost, "CUP", rates)}
+                {formatCurrency(totalCost, getDisplayCurrency(), rates)}
               </span>
             </div>
           </div>

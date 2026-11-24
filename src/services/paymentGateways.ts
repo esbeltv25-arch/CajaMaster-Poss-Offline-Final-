@@ -160,7 +160,7 @@ export const TransfermovilGateway = {
       ussdCode,
       qrPayload: `TM:${phone}:${amount}:${transactionId}`,
       initialStatus: "PENDIENTE",
-      instructions: `Realiza la transferencia de $${amount} CUP al número ${phone} o marca ${ussdCode} desde tu línea Cubacel.`,
+      instructions: `Realiza la transferencia de CUP ${amount} al número ${phone} o marca ${ussdCode} desde tu línea Cubacel.`,
       payload,
     };
   },
@@ -249,7 +249,7 @@ export const EnzonaGateway = {
       androidIntentUrl: webPaymentUrl,
       qrPayload,
       initialStatus: "PENDIENTE",
-      instructions: `Escanea el código QR desde la aplicación EnZona o abre el enlace de pago directo para pagar $${amount} CUP.`,
+      instructions: `Escanea el código QR desde la aplicación EnZona o abre el enlace de pago directo para pagar CUP ${amount}.`,
       payload,
     };
   },

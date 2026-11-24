@@ -259,7 +259,7 @@ export function DeliveryOrdersTab({
             </span>
           </div>
           <p className="text-sm sm:text-base font-black text-slate-900 truncate">
-            {formatCurrency(totalPendingDeliveryCash, "CUP", state.rates)}
+            {formatCurrency(totalPendingDeliveryCash, state.selectedCurrency, state.rates)}
           </p>
         </div>
       </div>
@@ -561,7 +561,7 @@ export function DeliveryOrdersTab({
                       <div className="flex items-center justify-between font-bold text-slate-800">
                         <span>{order.items.length} productos</span>
                         <span className="text-amber-800 font-extrabold">
-                          Total: {formatCurrency(order.total, "CUP", state.rates)}
+                          Total: {formatCurrency(order.total, state.selectedCurrency, state.rates)}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-500 truncate">
@@ -784,7 +784,7 @@ export function DeliveryOrdersTab({
                         {/* 5. Total & Pago */}
                         <td className="py-3 px-3 sm:px-4 text-right whitespace-nowrap">
                           <div className="font-black text-slate-900 text-xs">
-                            {formatCurrency(order.total, "CUP", state.rates)}
+                            {formatCurrency(order.total, state.selectedCurrency, state.rates)}
                           </div>
                           <span
                             className={`text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-md inline-block mt-0.5 ${

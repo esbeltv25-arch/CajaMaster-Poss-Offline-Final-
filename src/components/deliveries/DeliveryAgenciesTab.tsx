@@ -92,7 +92,7 @@ export function DeliveryAgenciesTab({
             </span>
           </div>
           <p className="text-sm sm:text-base font-black text-slate-900 truncate">
-            {formatCurrency(avgFee, "CUP", state.rates)}
+            {formatCurrency(avgFee, state.selectedCurrency, state.rates)}
           </p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export function DeliveryAgenciesTab({
                           {agency.name}
                         </h4>
                         <p className="text-[11px] text-slate-500 truncate">
-                          Tarifa base: <span className="font-bold text-slate-800">{formatCurrency(agency.baseFee, "CUP", state.rates)}</span>
+                          Tarifa base: <span className="font-bold text-slate-800">{formatCurrency(agency.baseFee, state.selectedCurrency, state.rates)}</span>
                         </p>
                       </div>
                     </div>

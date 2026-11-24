@@ -141,13 +141,13 @@ export function QuickDispatchModal({
             <div>
               <p className="text-slate-500 text-[11px] font-semibold">Total a Cobrar:</p>
               <p className="font-extrabold text-sm text-slate-900">
-                {formatCurrency(order.total, "CUP", state.rates)}
+                {formatCurrency(order.total, state.selectedCurrency, state.rates)}
               </p>
             </div>
             <div className="text-right">
               <p className="text-slate-500 text-[11px] font-semibold">Tarifa Delivery:</p>
               <p className="font-bold text-slate-800">
-                {formatCurrency(order.deliveryFee, "CUP", state.rates)}
+                {formatCurrency(order.deliveryFee, state.selectedCurrency, state.rates)}
               </p>
             </div>
           </div>
@@ -271,7 +271,7 @@ export function QuickDispatchModal({
                 >
                   {agencies.map((a) => (
                     <option key={a.id} value={a.id}>
-                      🏢 {a.name} (Base: ${a.baseFee} CUP - Tel: {a.phone})
+                      🏢 {a.name} (Base: {formatCurrency(a.baseFee, state.selectedCurrency, state.rates)} - Tel: {a.phone})
                     </option>
                   ))}
                 </select>

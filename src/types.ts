@@ -75,6 +75,8 @@ export type Sale = {
   cashPaid?: number;
   change?: number;
   currency: CurrencyCode;
+  /** CUP per 1 unit of `currency` at the time of the sale (1 for CUP). */
+  exchangeRate?: number;
   notes?: string;
 };
 

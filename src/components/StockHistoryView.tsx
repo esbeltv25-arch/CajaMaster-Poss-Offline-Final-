@@ -1,3 +1,4 @@
+import { getDisplayCurrency } from "../store";
 import React, { useState, useMemo } from "react";
 import type { Movement, Product, BusinessInfo, ExchangeRates, MovementType } from "../types";
 import {
@@ -320,7 +321,7 @@ export const StockHistoryView: React.FC<StockHistoryViewProps> = ({
               +{kpiStats.entriesQty} u
             </div>
             <div className="text-[11px] text-emerald-400/90 font-medium">
-              {formatCurrency(kpiStats.entriesCost, "CUP", rates)}
+              {formatCurrency(kpiStats.entriesCost, getDisplayCurrency(), rates)}
             </div>
           </div>
 
@@ -336,7 +337,7 @@ export const StockHistoryView: React.FC<StockHistoryViewProps> = ({
               -{kpiStats.salesQty} u
             </div>
             <div className="text-[11px] text-blue-400/90 font-medium">
-              {formatCurrency(kpiStats.salesCost, "CUP", rates)}
+              {formatCurrency(kpiStats.salesCost, getDisplayCurrency(), rates)}
             </div>
           </div>
 
@@ -352,7 +353,7 @@ export const StockHistoryView: React.FC<StockHistoryViewProps> = ({
               -{kpiStats.lossQty} u
             </div>
             <div className="text-[11px] text-rose-400/90 font-medium">
-              {formatCurrency(kpiStats.lossCost, "CUP", rates)}
+              {formatCurrency(kpiStats.lossCost, getDisplayCurrency(), rates)}
             </div>
           </div>
 
@@ -625,7 +626,7 @@ export const StockHistoryView: React.FC<StockHistoryViewProps> = ({
                           {m.qty} {m.productUnit || "u"}
                         </div>
                         <div className="text-[10px] text-slate-500">
-                          {formatCurrency(m.unitCost || 0, "CUP", rates)}/u
+                          {formatCurrency(m.unitCost || 0, getDisplayCurrency(), rates)}/u
                         </div>
                       </td>
 
@@ -651,7 +652,7 @@ export const StockHistoryView: React.FC<StockHistoryViewProps> = ({
                       {/* Total Cost */}
                       <td className="py-3 px-4 text-right whitespace-nowrap hidden lg:table-cell">
                         <span className="font-semibold text-slate-300">
-                          {formatCurrency(totalCost, "CUP", rates)}
+                          {formatCurrency(totalCost, getDisplayCurrency(), rates)}
                         </span>
                       </td>
 

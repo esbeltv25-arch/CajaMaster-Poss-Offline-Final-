@@ -91,25 +91,38 @@ export function formatQuantity(qty: number): string {
  * Formato universal de moneda para la interfaz de usuario.
  * Garantiza que montos en CUP, USD, EUR y MLC tengan representación homogénea.
  */
+/**
+ * One unambiguous label per currency. "$" is NOT used: in Cuba it can mean CUP
+ * or US dollar, and "CUP $ 1,250.00" looked like dollars.
+ */
+export function currencyLabel(currency: CurrencyCode): string {
+  return currency || "CUP";
+}
+
+/**
+ * Formats an amount stored in CUP (the base currency) in the requested currency,
+ * converting with the app exchange rates. Examples:
+ *   formatCurrency(15000)                 -> "CUP 15,000.00"
+ *   formatCurrency(15000, "USD", rates)   -> "USD 42.86"
+ */
 export function formatCurrency(
   amountInCUP: number,
   currency: CurrencyCode = "CUP",
   rates: ExchangeRates = DEFAULT_RATES
 ): string {
-  if (isNaN(amountInCUP) || !isFinite(amountInCUP)) return "CUP $ 0.00";
-
-  if (currency === "CUP") {
-    const formatted = formatGroupedNumber(roundCurrency(amountInCUP), 2, 2);
-    return `CUP $ ${formatted}`;
-  }
-
-  const rate = rates[currency] || 1;
-  const converted = roundCurrency(amountInCUP / rate);
-  const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "MLC";
-  const formatted = formatGroupedNumber(converted, 2, 2);
-
-  return `${symbol} ${formatted} ${currency}`;
+  const label = currencyLabel(currency);
+  if (isNaN(amountInCUP) || !isFinite(amountInCUP)) return `${label} 0.00`;
+  const value = currency === "CUP" ? amountInCUP : amountInCUP / (rates[currency] || 1);
+  return `${label} ${formatGroupedNumber(roundCurrency(value), 2, 2)}`;
 }
+
+/** Bills offered as quick buttons when charging in each currency. */
+export const QUICK_BILLS: Record<CurrencyCode, number[]> = {
+  CUP: [100, 200, 500, 1000, 2000, 5000, 10000, 20000],
+  USD: [1, 5, 10, 20, 50, 100],
+  EUR: [5, 10, 20, 50, 100, 200],
+  MLC: [1, 5, 10, 20, 50, 100],
+};
 
 export function convertFromCUP(
   amountInCUP: number,

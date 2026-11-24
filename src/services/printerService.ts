@@ -706,6 +706,10 @@ export function buildSaleReceiptText(
   rates: ExchangeRates,
   width: PrinterPaperWidth = "58mm"
 ): string {
+  // Receipt in the currency the sale was charged in, with the rate of that moment
+  const saleCur = (sale as any).currency || "CUP";
+  const saleRates =
+    saleCur !== "CUP" && (sale as any).exchangeRate ? { ...rates, [saleCur]: (sale as any).exchangeRate } : rates;
   const cols = getLineWidth(width);
   const lines: string[] = [];
   const taxo = biz.taxonomy || {};
@@ -744,24 +748,24 @@ export function buildSaleReceiptText(
   sale.items.forEach((item) => {
     const qtyStr = `${item.qty}${item.unit ? " " + item.unit : ""}`;
     const nameStr = `${qtyStr} x ${item.name}`;
-    const priceStr = formatCurrency(item.qty * item.price, "CUP", rates);
+    const priceStr = formatCurrency(item.qty * item.price, saleCur, saleRates);
     lines.push(padLine(nameStr, priceStr, cols));
   });
 
   lines.push(divider("-", cols));
 
   if (sale.discount > 0) {
-    lines.push(padLine("SUBTOTAL:", formatCurrency(sale.subtotal || sale.total + sale.discount, "CUP", rates), cols));
-    lines.push(padLine("DESCUENTO:", `-${formatCurrency(sale.discount, "CUP", rates)}`, cols));
+    lines.push(padLine("SUBTOTAL:", formatCurrency(sale.subtotal || sale.total + sale.discount, saleCur, saleRates), cols));
+    lines.push(padLine("DESCUENTO:", `-${formatCurrency(sale.discount, saleCur, saleRates)}`, cols));
   }
 
   if (biz.defaultTaxRate && biz.defaultTaxRate > 0) {
     const taxLabel = (biz.taxLabel || "IVA / Impuesto").toUpperCase();
     const calculatedTax = (sale.total * biz.defaultTaxRate) / (100 + biz.defaultTaxRate);
-    lines.push(padLine(`${taxLabel} (${biz.defaultTaxRate}% inc.):`, formatCurrency(calculatedTax, "CUP", rates), cols));
+    lines.push(padLine(`${taxLabel} (${biz.defaultTaxRate}% inc.):`, formatCurrency(calculatedTax, saleCur, saleRates), cols));
   }
 
-  lines.push(padLine("TOTAL A PAGAR:", formatCurrency(sale.total, "CUP", rates), cols));
+  lines.push(padLine("TOTAL A PAGAR:", formatCurrency(sale.total, saleCur, saleRates), cols));
 
   lines.push(divider(".", cols));
   const methodLabel =
@@ -777,9 +781,9 @@ export function buildSaleReceiptText(
   lines.push(padLine("METODO DE PAGO:", methodLabel, cols));
 
   if (sale.cashPaid && sale.cashPaid > 0) {
-    lines.push(padLine("ENTREGADO:", formatCurrency(sale.cashPaid, "CUP", rates), cols));
+    lines.push(padLine("ENTREGADO:", formatCurrency(sale.cashPaid, saleCur, saleRates), cols));
     if (sale.change !== undefined && sale.change >= 0) {
-      lines.push(padLine("CAMBIO / VUELTO:", formatCurrency(sale.change, "CUP", rates), cols));
+      lines.push(padLine("CAMBIO / VUELTO:", formatCurrency(sale.change, saleCur, saleRates), cols));
     }
   }
 
@@ -855,8 +859,8 @@ export function buildZReportText(
       activeBills.forEach((b) => {
         lines.push(
           padLine(
-            `${b.count}x $${b.value.toLocaleString("es-ES")}:`,
-            `$${(b.count * b.value).toLocaleString("es-ES")}`,
+            `${b.count}x ${b.value.toLocaleString("es-ES")} CUP:`,
+            `CUP ${(b.count * b.value).toLocaleString("es-ES")}`,
             cols
           )
         );

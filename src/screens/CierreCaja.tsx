@@ -107,7 +107,7 @@ export function generateZReportShareText(
       activeBills.forEach((b) => {
         const sub = b.count * b.value;
         const tag = b.value >= 10000 ? " *(Nuevo)*" : "";
-        lines.push(`• ${b.count}x $${b.value.toLocaleString("es-ES")}${tag} = $${sub.toLocaleString("es-ES")} CUP`);
+        lines.push(`• ${b.count}x ${b.value.toLocaleString("es-ES")} CUP${tag} = CUP ${sub.toLocaleString("es-ES")}`);
       });
     }
   }
@@ -492,7 +492,7 @@ export function CierreCajaScreen() {
                 FONDO DE CAJA INICIAL (CUP)
               </label>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
-                <span className="text-slate-400 font-bold text-sm">$</span>
+                <span className="text-slate-400 font-bold text-xs">CUP</span>
                 <input
                   type="number"
                   value={openingCash}
@@ -516,7 +516,7 @@ export function CierreCajaScreen() {
                 </button>
               </div>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
-                <span className="text-slate-400 font-bold text-sm">$</span>
+                <span className="text-slate-400 font-bold text-xs">CUP</span>
                 <input
                   type="number"
                   value={countedCash}

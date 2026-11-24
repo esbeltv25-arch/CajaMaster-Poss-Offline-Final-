@@ -1600,7 +1600,7 @@ export function ReportesScreen() {
             </div>
             <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100 print:bg-transparent print:border-none">
               <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">
-                Arqueo: CUP $ {formatAccounting(totals.importeVendido)}
+                Arqueo: CUP {formatAccounting(totals.importeVendido)}
               </div>
               <div className="text-[10px] text-slate-500">Verificado conforme (100% Cuadre)</div>
             </div>

@@ -271,10 +271,10 @@ export async function analyzeStockAndSales(
   const prompt = `Actúa como consultor de negocios y analista financiero senior para el establecimiento "${summaryContext.businessName || "Comercio POS"}".
 
 Datos analíticos del periodo actual (${summaryContext.periodLabel}):
-- Importe Total Vendido: $${summaryContext.totalSales.toLocaleString()} CUP
-- Costo Total de Mercancía: $${summaryContext.totalCost.toLocaleString()} CUP
-- Ganancia Bruta: $${summaryContext.grossProfit.toLocaleString()} CUP (Margen: ${summaryContext.marginPercent.toFixed(1)}%)
-- Productos más vendidos: ${summaryContext.topProducts?.map((p) => `${p.name} (${p.qty} u, $${p.total})`).join("; ") || "Varios"}
+- Importe Total Vendido: CUP ${summaryContext.totalSales.toLocaleString()}
+- Costo Total de Mercancía: CUP ${summaryContext.totalCost.toLocaleString()}
+- Ganancia Bruta: CUP ${summaryContext.grossProfit.toLocaleString()} (Margen: ${summaryContext.marginPercent.toFixed(1)}%)
+- Productos más vendidos: ${summaryContext.topProducts?.map((p) => `${p.name} (${p.qty} u, CUP ${p.total})`).join("; ") || "Varios"}
 - Productos con alerta de stock bajo: ${summaryContext.lowStockProducts?.map((p) => `${p.name} (${p.stock} ${p.unit})`).join("; ") || "Ninguno en riesgo"}
 
 Pregunta del administrador:
@@ -300,7 +300,7 @@ export async function generateWhatsAppOffer(
   promoGoal: string = "Oferta de la semana"
 ): Promise<string> {
   const productListStr = products
-    .map((p) => `• ${p.name}: $${p.price} CUP / ${p.unit}`)
+    .map((p) => `• ${p.name}: CUP ${p.price} / ${p.unit}`)
     .join("\n");
 
   const prompt = `Redacta un mensaje publicitario llamativo y profesional apto para compartir tanto en WhatsApp como en grupos y canales de Telegram, promocionando los siguientes productos del negocio "${businessName}":

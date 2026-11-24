@@ -559,6 +559,11 @@ if (typeof window !== "undefined") {
   });
 }
 
+/** Currency selected in the top bar (display/checkout currency). Amounts are stored in CUP. */
+export function getDisplayCurrency(): CurrencyCode {
+  return _state.selectedCurrency || "CUP";
+}
+
 export function useStore() {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -1116,6 +1121,7 @@ export const actions = {
     cashPaid?: number;
     change?: number;
     currency: CurrencyCode;
+    exchangeRate?: number;
     notes?: string;
   }): Sale {
     const {
@@ -1127,6 +1133,7 @@ export const actions = {
       cashPaid,
       change,
       currency,
+      exchangeRate,
       notes,
       gatewayReference,
       gatewayPayload,
@@ -1165,6 +1172,8 @@ export const actions = {
       cashPaid: cashPaid !== undefined ? roundCurrency(cashPaid) : undefined,
       change: change !== undefined ? roundCurrency(change) : undefined,
       currency,
+      // CUP per 1 unit of the currency used at checkout (1 for CUP)
+      exchangeRate: currency === "CUP" ? 1 : exchangeRate,
       notes,
     };
 

@@ -350,11 +350,11 @@ export async function generateUserManualPdf(businessName = "CajaMaster POS", pre
   doc.text("BOTONES DE BILLETES RAPIDOS:", margin + 4, y + 28);
 
   const mockBills = [
-    { label: "+$500", bg: [241, 245, 249] },
-    { label: "+$1.000", bg: [241, 245, 249] },
-    { label: "+$5.000", bg: [241, 245, 249] },
-    { label: "+$10.000 (NUEVO)", bg: [254, 243, 199] },
-    { label: "+$20.000 (NUEVO)", bg: [254, 215, 170] },
+    { label: "+500", bg: [241, 245, 249] },
+    { label: "+1.000", bg: [241, 245, 249] },
+    { label: "+5.000", bg: [241, 245, 249] },
+    { label: "+10.000 (NUEVO)", bg: [254, 243, 199] },
+    { label: "+20.000 (NUEVO)", bg: [254, 215, 170] },
   ];
   let bx = margin + 45;
   mockBills.forEach((mb) => {
@@ -389,7 +389,7 @@ export async function generateUserManualPdf(businessName = "CajaMaster POS", pre
   renderStep("1", "Seleccionar Articulos del Catalogo", "Toque las tarjetas de los productos o utilice la barra de busqueda superior o el filtro de categorias para agregar articulos al carrito.");
   renderStep("2", "Ajustar Cantidades y Descuentos", "En la vista del carrito, use los botones '+' y '-' para modificar unidades. Puede presionar el boton de descuento (%) para aplicar una rebaja fija o porcentual sobre el total.");
   renderStep("3", "Elegir Moneda de Cobro (CUP, USD, EUR, MLC)", "El sistema opera por defecto en Pesos Cubanos (CUP). Si el cliente paga en dolares o euros, seleccione la pestana de divisa; la app calculara el cambio exacto en CUP automaticamente segun la tasa configurada.");
-  renderStep("4", "Uso de Billetes Rapidos (Nuevos Billetes de 10k y 20k)", "Pulse directamente los botones dorados de '+$10.000' y '+$20.000' para registrar el dinero entregado por el cliente sin necesidad de teclear cifras largas.");
+  renderStep("4", "Uso de Billetes Rapidos (Nuevos Billetes de 10k y 20k)", "Pulse directamente los botones dorados de '+10.000' y '+20.000' para registrar el dinero entregado por el cliente sin necesidad de teclear cifras largas.");
   renderStep("5", "Finalizar e Imprimir / Compartir Ticket", "Presione 'Confirmar Cobro'. Podra imprimir inmediatamente el ticket en su impresora termica Bluetooth/Wi-Fi de 58mm u 80mm, abrir el dialogo del sistema o enviar el recibo por WhatsApp.");
 
   renderCardBox(
@@ -773,7 +773,7 @@ export async function generateUserManualPdf(businessName = "CajaMaster POS", pre
   y += 4.5;
 
   const glossaryItems = [
-    { tag: "[ +$10k / +$20k ]", name: "Billetes Rapidos", desc: "Suma billetes de 10.000 o 20.000 CUP al efectivo recibido con un solo toque." },
+    { tag: "[ +10k / +20k ]", name: "Billetes Rapidos", desc: "Suma billetes de 10.000 o 20.000 CUP al efectivo recibido con un solo toque." },
     { tag: "[ SUGERIR IA ]", name: "Asistente Gemini", desc: "Autocompleta categorias, emojis y margenes recomendados con IA." },
     { tag: "[ ARQUEO Z ]", name: "Calculadora de Billetes", desc: "Despliega el conteo fisico por denominaciones desde 1 CUP hasta 20.000 CUP." },
     { tag: "[ IMPRESORA ]", name: "Impresion Termica", desc: "Envia tickets ESC/POS por Bluetooth, USB OTG o red Wi-Fi/IP." },
