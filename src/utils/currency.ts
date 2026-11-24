@@ -1,4 +1,4 @@
-import type { CurrencyCode, ExchangeRates } from "../types";
+import type { CurrencyCode, ExchangeRates, CashCurrencyCount } from "../types";
 
 export const DEFAULT_RATES: ExchangeRates = {
   CUP: 1,
@@ -142,4 +142,18 @@ export function convertToCUP(
   if (fromCurrency === "CUP") return amount;
   const rate = rates[fromCurrency] || 1;
   return amount * rate;
+}
+
+/**
+ * Text lines of the cash count by currency for the Z report, e.g.
+ *   "USD: esperado 50.00 · contado 50.00 · dif. 0.00"
+ */
+export function cashByCurrencyLines(rows: CashCurrencyCount[] | undefined): string[] {
+  if (!rows || rows.length === 0) return [];
+  const f = (n: number) => formatGroupedNumber(roundCurrency(n), 2, 2);
+  return rows.map((r) => {
+    const d = roundCurrency(r.difference);
+    const dif = d === 0 ? "0.00" : `${d > 0 ? "+" : ""}${f(d)}`;
+    return `${r.currency}: esperado ${f(r.expected)} · contado ${f(r.counted)} · dif. ${dif}`;
+  });
 }

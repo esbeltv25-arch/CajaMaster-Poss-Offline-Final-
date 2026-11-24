@@ -63,6 +63,9 @@ jobs:
 
       - name: Compilar y empaquetar ZIP
         if: steps.remote.outputs.skip == 'false'
+        env:
+          # Opcional: clave de la API de tasas de elTOQUE (secreto ELTOQUE_TOKEN de este repositorio)
+          VITE_ELTOQUE_TOKEN: ${{ secrets.ELTOQUE_TOKEN }}
         run: node scripts/package-ota.js "${{ steps.ver.outputs.version }}" "${{ steps.ver.outputs.code }}" "$(cat /tmp/changelog.txt)" "${{ steps.ver.outputs.mandatory }}"
 
       - name: Verificar paquete

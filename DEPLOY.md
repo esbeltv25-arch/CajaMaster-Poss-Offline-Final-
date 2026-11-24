@@ -114,3 +114,20 @@ git push origin main
 * CajaMaster comprueba el servidor en segundo plano con un tiempo de espera de 3.5 segundos.
 * Si el teléfono no tiene conexión a Internet (entorno local de Cuba o sin datos móviles), la petición falla **silenciosamente sin mostrar errores fatales** ni bloquear la venta en el TPV.
 * La app continuará funcionando al 100% de su capacidad con la última versión empaquetada.
+
+---
+
+## 💱 Tasas de cambio de elTOQUE (opcional)
+
+La app puede actualizar USD, EUR y MLC desde la API oficial de elTOQUE (`https://tasas.eltoque.com/v1/trmi`).
+
+1. Solicita una clave gratuita en https://tasas-token.eltoque.com/ (una por aplicación).
+2. Para que tus clientes no tengan que configurarla:
+   - **Compilación local:** crea un archivo `.env` (no se sube a Git) con `VITE_ELTOQUE_TOKEN="tu-clave"` antes de `npm run cap:build` / `npm run release:ota`.
+   - **Publicación automática:** añade el secreto `ELTOQUE_TOKEN` en Settings → Secrets and variables → Actions.
+3. Alternativa: cada cliente pega su propia clave en **Ajustes → Moneda & Tipos de Cambio**.
+
+Notas:
+- La actualización automática funciona en la **app Android**. En un navegador web, elTOQUE no permite la consulta directa (CORS) y se usan las tasas manuales.
+- Las tasas de elTOQUE son referenciales: en Ajustes cada divisa puede seguir elTOQUE con un ajuste en CUP (por ejemplo −10) o usar un valor manual.
+- Condiciones de elTOQUE: citar la fuente (la app lo muestra) y no compartir la clave con terceros. Ten en cuenta que una clave incluida en la app puede extraerse del APK.

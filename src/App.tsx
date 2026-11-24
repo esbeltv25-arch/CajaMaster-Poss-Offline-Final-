@@ -22,6 +22,8 @@ import {
   type RemoteVersionInfo,
 } from "./services/otaUpdateService";
 import type { Product } from "./types";
+import { actions, getStoreRates } from "./store";
+import { updateRatesFromElToque } from "./services/eltoqueRates";
 
 type View =
   | { kind: "tab"; tab: Tab }
@@ -51,6 +53,21 @@ function AppContent() {
       setOtaBusy(false);
     }
   }
+
+  // Exchange rates from elTOQUE: on start and every 3 h (only if enabled, with token and internet)
+  useEffect(() => {
+    if (!activated) return;
+    const run = () =>
+      updateRatesFromElToque(getStoreRates(), (r) => actions.setExchangeRates(r)).catch(() => undefined);
+    const first = setTimeout(run, 4000);
+    const every = setInterval(run, 30 * 60 * 1000); // checks every 30 min; fetches at most every 3 h
+    window.addEventListener("online", run);
+    return () => {
+      clearTimeout(first);
+      clearInterval(every);
+      window.removeEventListener("online", run);
+    };
+  }, [activated]);
 
   // Silent, non-blocking background check on app start
   useEffect(() => {

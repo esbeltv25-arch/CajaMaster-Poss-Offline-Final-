@@ -560,6 +560,11 @@ if (typeof window !== "undefined") {
 }
 
 /** Currency selected in the top bar (display/checkout currency). Amounts are stored in CUP. */
+/** Current exchange rates (CUP per unit). */
+export function getStoreRates(): ExchangeRates {
+  return _state.rates;
+}
+
 export function getDisplayCurrency(): CurrencyCode {
   return _state.selectedCurrency || "CUP";
 }

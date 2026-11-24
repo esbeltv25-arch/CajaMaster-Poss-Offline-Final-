@@ -85,6 +85,7 @@ import {
 import type { BusinessInfo } from "../types";
 import { clearNativeAppCache } from "../utils/nativeBridge";
 import { ConfirmationModal } from "../components/ConfirmationModal";
+import { ExchangeRatesCard } from "../components/ExchangeRatesCard";
 
 export function AjustesScreen({
   deviceId,
@@ -327,11 +328,6 @@ export function AjustesScreen({
     setBizForm({ ...state.business });
   }, [state.business]);
 
-  // Exchange rates editing
-  const [usdRate, setUsdRate] = useState(state.rates.USD);
-  const [eurRate, setEurRate] = useState(state.rates.EUR);
-  const [mlcRate, setMlcRate] = useState(state.rates.MLC);
-  const [ratesSavedMsg, setRatesSavedMsg] = useState(false);
 
   const totalSales = state.sales.reduce((a, s) => a + s.total, 0);
 
@@ -371,16 +367,6 @@ export function AjustesScreen({
     setTimeout(() => setPresetToast(null), 3000);
   }
 
-  function handleSaveRates() {
-    actions.setExchangeRates({
-      CUP: 1,
-      USD: Math.max(1, usdRate),
-      EUR: Math.max(1, eurRate),
-      MLC: Math.max(1, mlcRate),
-    });
-    setRatesSavedMsg(true);
-    setTimeout(() => setRatesSavedMsg(false), 2000);
-  }
 
   const isOffline = state.connectivityMode === "offline";
   const isPhone = layoutMode === "phone";
@@ -928,75 +914,8 @@ export function AjustesScreen({
           </div>
         </div>
 
-        {/* Currency & Exchange Rates Section */}
-        <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
-                <IconCoins size={18} />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-slate-900">
-                  Moneda & Tipos de Cambio
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Base principal: Pesos Cubanos (CUP)
-                </p>
-              </div>
-            </div>
-
-            {ratesSavedMsg && (
-              <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg animate-pop">
-                ✓ Guardado
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 USD en CUP
-              </label>
-              <input
-                type="number"
-                value={usdRate}
-                onChange={(e) => setUsdRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 EUR en CUP
-              </label>
-              <input
-                type="number"
-                value={eurRate}
-                onChange={(e) => setEurRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold text-slate-500 uppercase block mb-1">
-                1 MLC en CUP
-              </label>
-              <input
-                type="number"
-                value={mlcRate}
-                onChange={(e) => setMlcRate(parseFloat(e.target.value || "0"))}
-                className="w-full neu-inset rounded-xl px-3 h-10 text-xs font-extrabold text-[var(--color-ink)] outline-none text-center bg-transparent"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleSaveRates}
-            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition cursor-pointer"
-          >
-            Actualizar Tasas de Cambio
-          </button>
-        </div>
+        {/* Currency & Exchange Rates Section (manual or elTOQUE) */}
+        <ExchangeRatesCard />
 
         {/* Connectivity Mode Box */}
         <div className="card p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 shadow-xs">

@@ -307,6 +307,7 @@ export function sanitizeClosingData(
     inventoryTotalValue,
     counts: closing.counts || [],
     billCounts: closing.billCounts,
+    cashByCurrency: closing.cashByCurrency,
     notes: closing.notes || "",
     cashier: closing.cashier,
   };

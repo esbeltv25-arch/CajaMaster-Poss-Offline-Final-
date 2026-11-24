@@ -5,7 +5,7 @@
  */
 
 import type { Sale, DailyClosing, BusinessInfo, ExchangeRates } from "../types";
-import { formatCurrency } from "./currency";
+import { formatCurrency, cashByCurrencyLines } from "./currency";
 import { openExternalUrl } from "./nativeBridge";
 
 /**
@@ -167,6 +167,7 @@ export function generateTelegramZReportText(
   lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`🎯 *Efectivo Esperado (Teórico):* CUP ${expectedCash.toFixed(2)}`);
   lines.push(`💵 *Efectivo Real Contado:* CUP ${closing.countedCash.toFixed(2)}`);
+  cashByCurrencyLines(closing.cashByCurrency).forEach((l) => lines.push(`   ◦ ${l}`));
 
   const diff = closing.cashDiscrepancy;
   if (Math.abs(diff) < 0.01) {

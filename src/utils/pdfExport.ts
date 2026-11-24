@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import type { Sale, DailyClosing, BusinessInfo, ExchangeRates, Product, Movement } from "../types";
 import type { IPVRow } from "./ipv";
-import { formatCurrency, roundCurrency, formatAccounting, formatQuantity } from "./currency";
+import { formatCurrency, roundCurrency, formatAccounting, formatQuantity, cashByCurrencyLines } from "./currency";
 import { sanitizeClosingData, auditReportData } from "./auditEngine";
 import {
   runIPVSentinel,
@@ -394,6 +394,19 @@ export function buildZReportPdfPayload(
   }
 
   y += 128;
+
+  // Cash count by currency (only when something was charged in USD/EUR/MLC)
+  const byCurrency = cashByCurrencyLines(closing.cashByCurrency);
+  if (byCurrency.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text("ARQUEO POR MONEDA", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    byCurrency.forEach((l, i) => doc.text(l, 40, y + 13 + i * 12));
+    y += 20 + byCurrency.length * 12;
+  }
 
   // SECTION 2: BALANCE FÍSICO DE INVENTARIO
   doc.setFillColor(248, 250, 252);

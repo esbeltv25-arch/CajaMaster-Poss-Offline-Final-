@@ -10,7 +10,7 @@ import type {
   BusinessInfo,
   ExchangeRates,
 } from "../types";
-import { formatCurrency, roundCurrency } from "../utils/currency";
+import { formatCurrency, roundCurrency, cashByCurrencyLines } from "../utils/currency";
 import { sanitizeClosingData } from "../utils/auditEngine";
 
 const PRINTER_STORAGE_KEY = "cajamaster_printer_config_v2";
@@ -846,6 +846,11 @@ export function buildZReportText(
   const diff = closing.cashDiscrepancy;
   const diffLabel = diff === 0 ? "CUADRADO (0.00)" : diff > 0 ? `SOBRANTE (+${diff.toFixed(2)})` : `FALTANTE (${diff.toFixed(2)})`;
   lines.push(padLine("DESCUADRE/DIF.:", diffLabel, cols));
+  const byCurrency = cashByCurrencyLines(closing.cashByCurrency);
+  if (byCurrency.length) {
+    lines.push("ARQUEO POR MONEDA:");
+    byCurrency.forEach((l) => lines.push(l));
+  }
 
   if (closing.billCounts && Object.keys(closing.billCounts).length > 0) {
     const activeBills = Object.entries(closing.billCounts)
