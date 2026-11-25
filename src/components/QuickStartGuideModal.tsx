@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react";
 import { AppLogo } from "./AppLogo";
 import { generateUserManualPdf } from "../utils/userManualPdf";
+import { FullManualView } from "./FullManualView";
 import { useStore } from "../store";
 import {
   IconCamera,
@@ -69,6 +70,7 @@ export function resetOnboarding(): void {
 
 export type GuideSection =
   | "wizard"
+  | "manual"
   | "caja"
   | "inventario"
   | "cierre"
@@ -84,6 +86,7 @@ interface GuideTabItem {
 
 const GUIDE_TABS: GuideTabItem[] = [
   { id: "wizard", label: "Inicio Rápido", icon: <IconSparkles size={14} /> },
+  { id: "manual", label: "Manual completo", icon: <IconHelp size={14} /> },
   { id: "caja", label: "Caja (POS)", icon: <IconCart size={14} /> },
   { id: "inventario", label: "Inventario & Stock", icon: <IconBox size={14} /> },
   { id: "cierre", label: "Cierre & Arqueo Z", icon: <IconClipboardCheck size={14} /> },
@@ -248,6 +251,12 @@ export function QuickStartGuideModal({
                   onGoToNewProduct={onGoToNewProduct}
                   onGoToInventory={onGoToInventory}
                 />
+              )}
+
+              {activeSection === "manual" && (
+                <motion.div key="manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                  <FullManualView />
+                </motion.div>
               )}
 
               {activeSection === "caja" && (
@@ -789,7 +798,7 @@ function CajaGuideSection({ onGoToCaja }: { key?: React.Key; onGoToCaja: () => v
             Al presionar <b>"Cobrar Ticket"</b> se abrirá la ventana de liquidación:
           </p>
           <ul className="list-disc list-inside space-y-1 mt-1 text-slate-600">
-            <li><b>Efectivo en CUP:</b> Ingresa el importe entregado por el cliente y la app calculará el vuelto exacto.</li>
+            <li><b>Efectivo:</b> Ingresa el importe entregado por el cliente y la app calculará el vuelto exacto.</li>
             <li><b>Divisas (USD / EUR / MLC):</b> La app convierte automáticamente el total en CUP a la divisa seleccionada según la tasa configurada en Ajustes, y te indica el importe equivalente a recibir.</li>
             <li><b>Transferencia QR:</b> Muestra el botón para pagos digitales mediante <i>Transfermóvil</i> o <i>EnZona</i>, generando un registro separado para cuadres contables.</li>
           </ul>
@@ -1043,7 +1052,7 @@ function AjustesGuideSection() {
 
         <GuideBox title="3. Tasas de Cambio Multimoneda (USD, MLC, EUR)">
           <p>
-            En la sección <b>"Tasas de Cambio Oficiales"</b> puedes actualizar en cualquier momento el valor en CUP de 1 USD, 1 EUR y 1 MLC. La caja usará estos valores automáticamente al cobrar.
+            En la sección <b>"Moneda & Tipos de Cambio"</b> eliges para USD, EUR y MLC entre la tasa de <b>elTOQUE</b> (mercado informal, con tu ajuste por encima o por debajo) o un valor <b>manual</b>. La caja usa estas tasas automáticamente al cobrar. Más detalles en «Manual completo».
           </p>
         </GuideBox>
 

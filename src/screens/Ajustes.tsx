@@ -1154,7 +1154,7 @@ export function AjustesScreen({
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-600 truncate">
-                    Caja, Stock, Billetes Nuevos 10k/20k, Arqueo Z, IPVE y Respaldos
+                    Guía rápida y manual completo paso a paso: caja, monedas, usuarios, cierre Z, envíos y más
                   </p>
                 </div>
               </div>
@@ -1164,10 +1164,19 @@ export function AjustesScreen({
                   onClick={() => handleGenerateManualPdf(false)}
                   disabled={isGeneratingManualPdf}
                   className="px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
-                  title="Descargar Manual en PDF"
+                  title="Descargar la guía rápida en PDF"
                 >
                   <IconDownload size={14} />
-                  <span>{isGeneratingManualPdf ? "Generando..." : "Descargar PDF"}</span>
+                  <span>{isGeneratingManualPdf ? "Generando..." : "Guía rápida PDF"}</span>
+                </button>
+
+                <button
+                  id="btn-open-full-manual"
+                  onClick={() => onOpenQuickGuide("manual")}
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+                  title="Manual completo paso a paso (con buscador y descarga en PDF)"
+                >
+                  <span>📘 Manual completo</span>
                 </button>
 
                 <button

@@ -3,7 +3,7 @@
   "versionCode": 1130,
   "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.3.zip",
   "mandatory": false,
-  "changelog": "Telegram: los botones de enviar por Telegram (ID de activación, tickets, cierre Z, envíos y repartidores) abren directamente la app de Telegram en lugar del navegador. Incluye bloqueo de pantalla con PIN y bloqueo automático.",
+  "changelog": "Manual completo paso a paso dentro de la app (con buscador) y descargable en PDF. Telegram abre directamente la app de Telegram. Bloqueo de pantalla con PIN y bloqueo automático. Usuarios y turnos con PIN.",
   "releaseDate": "2026-11-25",
   "minNativeVersionCode": 1000
 }
