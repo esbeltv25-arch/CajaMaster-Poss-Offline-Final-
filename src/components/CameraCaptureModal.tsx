@@ -361,8 +361,18 @@ export function CameraCaptureModal({
     [previewImage, selectedDeviceId, facingMode, isMobile, isInIframe, attachStreamToVideo, updateDeviceList, stopStream]
   );
 
-  // Inicializar al abrir modal
+  // initCamera / stopStream change identity whenever the captured photo changes. The effect
+  // below must NOT re-run because of that: it would discard the photo just taken (previewImage
+  // reset to null) and restart the camera — the shutter seemed to "do nothing".
+  const initCameraRef = useRef(initCamera);
+  initCameraRef.current = initCamera;
+  const stopStreamRef = useRef(stopStream);
+  stopStreamRef.current = stopStream;
+
+  // Inicializar al abrir modal (solo al abrir o cerrar)
   useEffect(() => {
+    const initCamera = initCameraRef.current;
+    const stopStream = stopStreamRef.current;
     if (isOpen) {
       // Siempre iniciamos con la cámara activa para tomar una nueva foto (no congelar en foto antigua)
       setPreviewImage(null);
@@ -383,9 +393,9 @@ export function CameraCaptureModal({
     }
 
     return () => {
-      stopStream();
+      stopStreamRef.current();
     };
-  }, [isOpen, isInIframe, initCamera, stopStream]);
+  }, [isOpen, isInIframe]);
 
   // Captura Directa con Cámara del Dispositivo (100% Infalible en Móvil y Android)
   const handleDirectCameraCapture = useCallback(async () => {
