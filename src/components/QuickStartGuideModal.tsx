@@ -186,7 +186,7 @@ export function QuickStartGuideModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 26, stiffness: 360 }}
-          className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] text-slate-800 border border-black/10"
+          className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(92vh/var(--app-scale,1))] text-slate-800 border border-black/10"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header Bar */}

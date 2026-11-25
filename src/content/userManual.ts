@@ -91,7 +91,8 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
         bullets: [
           "Formato de pantalla (Ajustes → Tema & Modo Visual): «Móvil», «Tablet / Mostrador» o escritorio. Elige el que mejor se vea en tu equipo.",
           "Modo oscuro y temas de color: en la misma sección.",
-          "«Calibrar Márgenes Móvil»: si la cámara del teléfono tapa los títulos o los botones del sistema tapan el botón de cobrar, ajusta aquí los márgenes.",
+          "«Tamaño y márgenes» → «Tamaño de letra y botones»: agranda toda la app (letras, botones e iconos) de 90% a 140% con los botones Normal / Grande / Muy grande, A− / A+ o la barra. Cada formato (Móvil, Tablet, Escritorio) recuerda su propio tamaño.",
+          "En la misma ventana: márgenes superior e inferior, por si la cámara del teléfono tapa los títulos o los botones del sistema tapan el botón de cobrar.",
         ],
       },
     ],
@@ -629,6 +630,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
           "La caja no cuadra: revisa el fondo inicial, las ventas por transferencia (no cuentan como efectivo) y el efectivo contado en cada divisa.",
           "Las tasas no se actualizan: necesitas internet y la clave de la API de elTOQUE. Las divisas en «Manual» no se actualizan solas.",
           "Un campo numérico no deja borrar: actualiza a la última versión; ahora todos los campos se pueden vaciar.",
+          "Las letras o los botones se ven pequeños: Ajustes → Tema & Modo Visual → «Tamaño y márgenes» → «Tamaño de letra y botones» (por ejemplo «Grande», 115%).",
           "El otro teléfono no se conecta: en Wi-Fi local deben estar en el mismo router; prueba el modo Nube / P2P o revisa «Diagnóstico».",
           "La app pide PIN muy seguido: un administrador puede aumentar los minutos del bloqueo automático o desactivar «Pedir PIN al abrir la app».",
           "No veo el aviso de actualización: comprueba la conexión y toca «Comprobar GitHub» en Ajustes.",

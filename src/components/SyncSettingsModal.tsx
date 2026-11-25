@@ -174,7 +174,7 @@ export function SyncSettingsModal({
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[90vh]"
+          className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[calc(90vh/var(--app-scale,1))]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

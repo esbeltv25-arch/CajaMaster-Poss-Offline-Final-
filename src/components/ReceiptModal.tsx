@@ -157,7 +157,7 @@ export function ReceiptModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] print:max-w-none print:shadow-none print:border-none print:rounded-none"
+          className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[calc(92vh/var(--app-scale,1))] print:max-w-none print:shadow-none print:border-none print:rounded-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Toolbar (hidden on print) */}

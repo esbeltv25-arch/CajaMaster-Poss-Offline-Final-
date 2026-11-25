@@ -210,7 +210,7 @@ export function BackupModal({
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-pop"
+          className="bg-white rounded-3xl w-full max-w-xl max-h-[calc(92vh/var(--app-scale,1))] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-pop"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

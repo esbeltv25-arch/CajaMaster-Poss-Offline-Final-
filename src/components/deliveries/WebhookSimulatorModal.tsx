@@ -80,7 +80,7 @@ export function WebhookSimulatorModal({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[var(--color-card-bg)] text-[var(--color-ink)] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-black/10 dark:border-white/10"
+        className="bg-[var(--color-card-bg)] text-[var(--color-ink)] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[calc(90vh/var(--app-scale,1))] overflow-hidden border border-black/10 dark:border-white/10"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">

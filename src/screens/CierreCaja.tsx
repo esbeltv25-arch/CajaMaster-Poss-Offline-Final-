@@ -1318,7 +1318,7 @@ function ZReportModal({
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[94vh] print:max-w-none print:shadow-none print:border-none print:rounded-none animate-pop my-auto"
+          className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[calc(94vh/var(--app-scale,1))] print:max-w-none print:shadow-none print:border-none print:rounded-none animate-pop my-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with Title and Close Button */}

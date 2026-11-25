@@ -1350,18 +1350,19 @@ export function AjustesScreen({
           <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-slate-800 block">
-                Márgenes y Reescalado de Pantalla:
+                Márgenes y Tamaño de Pantalla:
               </span>
               <span className="text-[10.5px] text-slate-500">
-                Evita que la cámara tape títulos o que los botones del teléfono tapen el cobro
+                Agranda letras y botones, o evita que la cámara tape títulos y que los botones del teléfono tapen el cobro
               </span>
             </div>
             <button
               type="button"
+              id="btn-open-calibration"
               onClick={() => setIsCalibrationModalOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95 shrink-0"
             >
-              <span>📱 Calibrar Márgenes Móvil</span>
+              <span>🔠 Tamaño y márgenes</span>
             </button>
           </div>
         </div>

@@ -299,7 +299,7 @@ function OtaUpdateModalContent({ onClose, initialTab = "update" }: OtaUpdateModa
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-black/10 text-slate-900"
+        className="bg-white rounded-3xl w-full max-w-xl max-h-[calc(92vh/var(--app-scale,1))] flex flex-col overflow-hidden shadow-2xl border border-black/10 text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

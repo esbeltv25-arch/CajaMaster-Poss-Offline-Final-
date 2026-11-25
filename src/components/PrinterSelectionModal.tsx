@@ -248,7 +248,7 @@ export function PrinterSelectionModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto"
+          className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[calc(90vh/var(--app-scale,1))] my-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

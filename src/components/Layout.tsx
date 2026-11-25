@@ -45,7 +45,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
   if (layoutMode === "tablet") {
     return (
       <div
-        className={`h-[100dvh] md:min-h-screen w-full flex flex-col bg-gradient-to-br ${theme.bgGradient} p-0 md:p-6 transition-all duration-300 font-sans overflow-hidden md:overflow-auto`}
+        className={`h-[calc(100dvh/var(--app-scale,1))] md:min-h-[calc(100dvh/var(--app-scale,1))] w-full flex flex-col bg-gradient-to-br ${theme.bgGradient} p-0 md:p-6 transition-all duration-300 font-sans overflow-hidden md:overflow-auto`}
       >
         {/* Counter Top Utility Bar (Visible on Tablet/Desktop screens) */}
         <div className="hidden md:flex flex-wrap gap-2 w-full max-w-7xl mx-auto mb-3 items-center justify-between px-4 py-2 bg-[var(--color-card-bg)]/90 backdrop-blur-md rounded-2xl border border-black/5 dark:border-white/10 shadow-xs shrink-0">
@@ -139,7 +139,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 
         {/* Counter / Tablet Container */}
         <div
-          className="app-container w-full max-w-7xl mx-auto rounded-none md:rounded-[36px] shadow-2xl border-0 md:border md:border-white/40 overflow-hidden flex-1 flex flex-col relative h-[100dvh] md:h-auto md:min-h-[760px]"
+          className="app-container w-full max-w-7xl mx-auto rounded-none md:rounded-[36px] shadow-2xl border-0 md:border md:border-white/40 overflow-hidden flex-1 flex flex-col relative h-[calc(100dvh/var(--app-scale,1))] md:h-auto md:min-h-[760px]"
           style={{ backgroundColor: theme.frameBg }}
         >
           {children}
@@ -169,10 +169,10 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
   // Default Smartphone Frame Mode - Responsively scaled to fit inside AI Studio simulator and laptops
   return (
     <div
-      className={`h-[100dvh] w-full flex items-stretch md:items-center justify-center bg-gradient-to-br ${theme.bgGradient} p-0 md:p-3 transition-all duration-300 font-sans overflow-hidden`}
+      className={`h-[calc(100dvh/var(--app-scale,1))] w-full flex items-stretch md:items-center justify-center bg-gradient-to-br ${theme.bgGradient} p-0 md:p-3 transition-all duration-300 font-sans overflow-hidden`}
     >
       <div
-        className="app-container w-full h-full max-h-[100dvh] md:h-full md:max-h-[min(890px,calc(100dvh-1.5rem))] md:max-w-[440px] md:rounded-[40px] md:shadow-[0_20px_70px_-15px_rgba(0,0,0,0.35)] md:border md:border-white/60 overflow-hidden flex flex-col relative transition-all duration-300"
+        className="app-container w-full h-full max-h-[calc(100dvh/var(--app-scale,1))] md:h-full md:max-h-[min(890px,calc(100dvh/var(--app-scale,1)-1.5rem))] md:max-w-[440px] md:rounded-[40px] md:shadow-[0_20px_70px_-15px_rgba(0,0,0,0.35)] md:border md:border-white/60 overflow-hidden flex flex-col relative transition-all duration-300"
         style={{ backgroundColor: theme.frameBg }}
       >
         {children}

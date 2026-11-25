@@ -1646,7 +1646,7 @@ export function ReportesScreen() {
               </button>
             </div>
 
-            <div className="space-y-3.5 max-h-[65vh] overflow-y-auto pr-1">
+            <div className="space-y-3.5 max-h-[calc(65vh/var(--app-scale,1))] overflow-y-auto pr-1">
               {/* Business Name */}
               <div>
                 <label className="text-[11px] font-extrabold text-slate-700 block mb-1 uppercase">

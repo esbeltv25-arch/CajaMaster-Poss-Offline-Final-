@@ -178,7 +178,7 @@ export function BusinessCustomizationModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 my-auto text-slate-900"
+          className="bg-white rounded-3xl w-full max-w-2xl max-h-[calc(92vh/var(--app-scale,1))] flex flex-col overflow-hidden shadow-2xl border border-slate-200 my-auto text-slate-900"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Header */}

@@ -47,7 +47,7 @@ export function ShiftLockScreen({ locked = false }: { locked?: boolean }) {
   return (
     <div
       id="shift-lock-screen"
-      className="min-h-[100dvh] w-full flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-[#081814] via-[#0f2c25] to-[#081814] text-white"
+      className="min-h-[calc(100dvh/var(--app-scale,1))] w-full flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-[#081814] via-[#0f2c25] to-[#081814] text-white"
     >
       <div className="w-full max-w-sm space-y-5">
         <div className="flex flex-col items-center gap-2">

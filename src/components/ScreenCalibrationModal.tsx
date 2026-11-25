@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme, type ScreenCalibration, DEFAULT_SCREEN_CALIBRATION } from "../themeContext";
+import { useTheme, uiScaleFor, UI_SCALE_MIN, UI_SCALE_MAX, type LayoutMode } from "../themeContext";
 import { IconCheck, IconRotate, IconSliders } from "./Icons";
 
 interface ScreenCalibrationModalProps {
@@ -8,7 +8,14 @@ interface ScreenCalibrationModalProps {
 }
 
 export function ScreenCalibrationModal({ isOpen, onClose }: ScreenCalibrationModalProps) {
-  const { calibration, setCalibration, resetCalibration } = useTheme();
+  const { calibration, setCalibration, resetCalibration, layoutMode } = useTheme();
+  const uiScale = uiScaleFor(calibration, layoutMode);
+  const MODE_LABELS: Record<LayoutMode, string> = { phone: "Móvil", tablet: "Tablet / Mostrador", fullscreen: "Escritorio" };
+  const setUiScale = (v: number) =>
+    setCalibration((prev) => ({
+      ...prev,
+      uiScaleByMode: { ...(prev.uiScaleByMode || {}), [layoutMode]: Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, Math.round(v))) },
+    }));
 
   if (!isOpen) return null;
 
@@ -45,6 +52,7 @@ export function ScreenCalibrationModal({ isOpen, onClose }: ScreenCalibrationMod
           paddingHorizontal: 0,
           zoom: 95,
         });
+        setUiScale(95);
         break;
     }
   };
@@ -55,7 +63,7 @@ export function ScreenCalibrationModal({ isOpen, onClose }: ScreenCalibrationMod
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 text-slate-900"
+        className="bg-white rounded-3xl w-full max-w-lg max-h-[calc(92vh/var(--app-scale,1))] flex flex-col overflow-hidden shadow-2xl border border-slate-200 text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -199,27 +207,70 @@ export function ScreenCalibrationModal({ isOpen, onClose }: ScreenCalibrationMod
               </p>
             </div>
 
-            {/* Zoom / Scale */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-200">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            {/* Size of text and buttons (per screen format) */}
+            <div className="space-y-2 pt-2 border-t border-slate-200" id="ui-scale-control">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-700">
                 <span className="flex items-center gap-1.5">
-                  <span>🔍</span> Reescalado / Zoom General
+                  <span>🔠</span> Tamaño de letra y botones
                 </span>
-                <span className="font-mono text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md font-extrabold text-[11px]">
-                  {calibration.zoom}%
+                <span className="font-mono text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md font-extrabold text-[11px]" id="ui-scale-value">
+                  {uiScale}%
                 </span>
               </div>
-              <input
-                type="range"
-                min={85}
-                max={115}
-                step={1}
-                value={calibration.zoom}
-                onChange={(e) => setCalibration({ zoom: Number(e.target.value) })}
-                className="w-full accent-amber-500 cursor-pointer"
-              />
-              <p className="text-[10px] text-slate-500">
-                Si tu pantalla es pequeña, reduce el porcentaje al 95% o 90% para que todo el contenido quepa cómodamente.
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { v: 100, label: "Normal" },
+                  { v: 115, label: "Grande" },
+                  { v: 130, label: "Muy grande" },
+                ].map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    id={`ui-scale-${o.v}`}
+                    onClick={() => setUiScale(o.v)}
+                    className={`py-2 rounded-xl text-xs font-extrabold cursor-pointer transition ${
+                      uiScale === o.v ? "bg-slate-900 text-amber-400" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {o.label}
+                    <span className="block text-[10px] font-semibold opacity-70">{o.v}%</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="ui-scale-minus"
+                  aria-label="Más pequeño"
+                  onClick={() => setUiScale(uiScale - 5)}
+                  className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-black text-sm cursor-pointer shrink-0"
+                >
+                  A−
+                </button>
+                <input
+                  type="range"
+                  id="ui-scale-range"
+                  min={UI_SCALE_MIN}
+                  max={UI_SCALE_MAX}
+                  step={5}
+                  value={uiScale}
+                  onChange={(e) => setUiScale(Number(e.target.value))}
+                  className="flex-1 min-w-0 accent-amber-500 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  id="ui-scale-plus"
+                  aria-label="Más grande"
+                  onClick={() => setUiScale(uiScale + 5)}
+                  className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-black text-base cursor-pointer shrink-0"
+                >
+                  A+
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-snug">
+                Agranda o reduce <b>toda la app</b> (letras, botones e iconos) para verla mejor. Se guarda para el formato{" "}
+                <b>{MODE_LABELS[layoutMode]}</b>; cada formato recuerda su propio tamaño. En pantallas pequeñas, con tamaños grandes
+                cabe menos información y habrá que desplazarse más.
               </p>
             </div>
           </div>

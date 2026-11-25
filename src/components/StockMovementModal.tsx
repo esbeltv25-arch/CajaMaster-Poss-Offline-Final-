@@ -129,7 +129,7 @@ export const StockMovementModal: React.FC<StockMovementModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-slate-100"
+        className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(92vh/var(--app-scale,1))] text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

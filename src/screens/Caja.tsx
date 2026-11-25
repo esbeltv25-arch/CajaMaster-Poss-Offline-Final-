@@ -1211,7 +1211,7 @@ export function CajaScreen({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="w-full max-w-md h-[90%] sm:h-[88%] max-h-[92dvh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-t sm:border border-slate-200"
+              className="w-full max-w-md h-[90%] sm:h-[88%] max-h-[calc(92dvh/var(--app-scale,1))] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-t sm:border border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drag Handle & Top Bar */}
@@ -1415,7 +1415,7 @@ export function CajaScreen({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 10 }}
               transition={{ type: "spring", damping: 25, stiffness: 400 }}
-              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[88vh]"
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[calc(88vh/var(--app-scale,1))]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}

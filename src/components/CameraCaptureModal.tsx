@@ -558,7 +558,7 @@ export function CameraCaptureModal({
       onClick={handleClose}
     >
       <div
-        className="bg-slate-950 text-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]"
+        className="bg-slate-950 text-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[calc(92vh/var(--app-scale,1))]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
