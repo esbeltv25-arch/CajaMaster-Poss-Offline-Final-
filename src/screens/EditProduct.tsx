@@ -1,4 +1,5 @@
 import { useState, type ReactNode, useRef, type ChangeEvent } from "react";
+import { allowLeavingApp, leftAppDone } from "../services/userSession";
 import { NumericInput } from "../components/NumericInput";
 import { actions, useStore } from "../store";
 import { TopBar } from "../components/Layout";
@@ -129,6 +130,7 @@ export function EditProductScreen({
   const profit = price - cost;
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    leftAppDone();
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -222,7 +224,7 @@ export function EditProductScreen({
             </button>
 
             <button
-              onClick={() => filePickerRef.current?.click()}
+              onClick={() => { allowLeavingApp(); filePickerRef.current?.click(); }}
               className="p-2 rounded-2xl neu-sm text-slate-700 hover:text-slate-950 transition cursor-pointer"
               title="Subir imagen desde archivo"
             >

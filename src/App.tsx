@@ -115,9 +115,9 @@ function AppContent() {
   if (userSession.users.length > 0 && !activeShift) {
     return <ShiftLockScreen />;
   }
-  if (userSession.users.length > 0 && userSession.locked) {
-    return <ShiftLockScreen locked />;
-  }
+  // Locked screen: shown ON TOP of the app (not instead of it), so whatever was open
+  // underneath (a product form waiting for a camera photo, a payment, the ticket) is kept.
+  const screenLocked = userSession.users.length > 0 && userSession.locked;
 
   function logout() {
     revokeLicense();
@@ -128,6 +128,12 @@ function AppContent() {
 
   return (
     <>
+      {screenLocked && (
+        <div className="fixed inset-0 z-[1000] overflow-y-auto" id="shift-lock-overlay">
+          <ShiftLockScreen locked />
+        </div>
+      )}
+      <div inert={screenLocked} aria-hidden={screenLocked || undefined} className="contents">
       <PhoneFrame>
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <AnimatePresence mode="wait" initial={false}>
@@ -279,6 +285,7 @@ function AppContent() {
         onGoToCaja={() => setView({ kind: "tab", tab: "caja" })}
         onGoToNewProduct={() => setView({ kind: "edit" })}
       />
+      </div>
     </>
   );
 }

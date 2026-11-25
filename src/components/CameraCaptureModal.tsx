@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent } from "react";
+import { allowLeavingApp, leftAppDone } from "../services/userSession";
 import {
   IconCamera,
   IconRotate,
@@ -400,6 +401,8 @@ export function CameraCaptureModal({
           console.warn("[CameraCaptureModal] Check permissions advertencia:", permErr);
         }
 
+        // Opening the system camera sends this app to the background: that must not lock it
+        allowLeavingApp();
         const photo = await Camera.getPhoto({
           quality: 85,
           allowEditing: false,
@@ -420,11 +423,14 @@ export function CameraCaptureModal({
         }
       } catch (err: any) {
         console.warn("[CameraCaptureModal] Camera.getPhoto falló o cancelado, usando selector de cámara:", err);
+      } finally {
+        leftAppDone();
       }
     }
 
     // 2. En Navegador Móvil o fallback Web: Disparar input con capture="environment"
     // Esto abre de inmediato la cámara nativa del teléfono en Android e iOS
+    allowLeavingApp();
     if (mobileCameraInputRef.current) {
       mobileCameraInputRef.current.click();
     } else if (fileInputRef.current) {
@@ -485,6 +491,7 @@ export function CameraCaptureModal({
 
   // Subida desde archivo local o selector de foto
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    leftAppDone();
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -677,7 +684,7 @@ export function CameraCaptureModal({
                 {/* 3. Subir archivo desde dispositivo */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                   className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <IconImage size={16} /> Seleccionar Imagen / Galería
@@ -741,7 +748,7 @@ export function CameraCaptureModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                       className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <IconImage size={15} />
@@ -833,7 +840,7 @@ export function CameraCaptureModal({
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                 className="py-2.5 px-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer"
                 title="Seleccionar archivo de imagen"
               >

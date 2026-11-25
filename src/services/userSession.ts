@@ -293,6 +293,23 @@ export function unlockShift(pin: string): { ok: boolean; error?: string } {
 
 let lastActivity = 0;
 let lastActivitySaved = 0;
+/** Until when leaving the app is expected (camera, file picker) and must not lock it. */
+let outsideAllowedUntil = 0;
+
+/**
+ * Call right before opening another app on purpose (system camera, photo picker):
+ * coming back within `maxMinutes` does not lock the screen and counts as activity.
+ */
+export function allowLeavingApp(maxMinutes = 10) {
+  outsideAllowedUntil = Date.now() + maxMinutes * 60_000;
+  markActivity(true);
+}
+
+/** The camera / picker came back: normal locking rules apply again. */
+export function leftAppDone() {
+  outsideAllowedUntil = 0;
+  markActivity(true);
+}
 
 function saveActivity() {
   lastActivitySaved = Date.now();
@@ -321,10 +338,12 @@ export function startLockWatcher(): () => void {
   }
   let hiddenAt = 0;
   const onActivity = () => {
+    // Touching the app again ends a camera / picker exception that never reported back (cancelled)
+    outsideAllowedUntil = 0;
     if (!snapshot.locked) markActivity();
   };
   const check = () => {
-    if (snapshot.locked || !getSession()) return;
+    if (snapshot.locked || !getSession() || Date.now() < outsideAllowedUntil) return;
     const mins = snapshot.lock.autoLockMinutes;
     if (mins > 0 && Date.now() - lastActivity >= mins * 60_000) lockNow();
   };
@@ -336,6 +355,12 @@ export function startLockWatcher(): () => void {
     }
     const away = hiddenAt ? Date.now() - hiddenAt : 0;
     hiddenAt = 0;
+    if (Date.now() < outsideAllowedUntil) {
+      // Back from the camera or the photo picker opened by the app itself (one time only)
+      outsideAllowedUntil = 0;
+      markActivity(true);
+      return;
+    }
     if (snapshot.lock.lockOnOpen && away >= BACKGROUND_GRACE_MS) lockNow();
     else check();
   };
