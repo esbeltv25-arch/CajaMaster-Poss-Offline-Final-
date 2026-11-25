@@ -13,7 +13,7 @@ name: Compilar APK Android
 
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
     paths: ["src/**", "public/**", "android/**", "package.json", "version.json", "capacitor.config.ts", "vite.config.ts", "index.html", ".github/workflows/build-apk.yml"]
   pull_request:
     branches: [main]
