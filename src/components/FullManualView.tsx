@@ -1,5 +1,5 @@
 import { useMemo, useState, type Key } from "react";
-import { MANUAL_CHAPTERS, MANUAL_EDITION, chapterSearchText, type ManualChapter } from "../content/userManual";
+import { MANUAL_CHAPTERS, MANUAL_EDITION, chapterSearchText, manualImageUrl, type ManualChapter } from "../content/userManual";
 import { generateDetailedManualPdf } from "../utils/detailedManualPdf";
 import { useStore } from "../store";
 import { IconDownload, IconSearch } from "./Icons";
@@ -165,6 +165,17 @@ function ChapterCard({ chapter, open, onToggle }: { key?: Key; chapter: ManualCh
                   ⚠️ {s.warning}
                 </p>
               )}
+              {s.images?.map((img) => (
+                <figure key={img.file} className="pt-1 flex flex-col items-center gap-1.5">
+                  <img
+                    src={manualImageUrl(img.file)}
+                    alt={img.caption}
+                    loading="lazy"
+                    className="w-full max-w-[260px] rounded-2xl border border-slate-200 shadow-sm bg-slate-100"
+                  />
+                  <figcaption className="text-[10.5px] text-slate-500 text-center leading-snug max-w-[300px]">{img.caption}</figcaption>
+                </figure>
+              ))}
             </div>
           ))}
         </div>

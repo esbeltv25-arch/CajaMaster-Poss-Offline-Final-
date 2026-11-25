@@ -402,7 +402,7 @@ export function SyncSettingsModal({
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-tight mt-1">
-                      Enlaza este Mac (simulador de AI Studio) con tu teléfono móvil físico sin configurar IPs. Conexión directa y rápida.
+                      Conecta este equipo con otros teléfonos o tablets por internet, sin configurar direcciones IP. Conexión directa y rápida.
                     </p>
                   </button>
 
@@ -590,7 +590,7 @@ export function SyncSettingsModal({
                 <div className="text-xs text-slate-600 leading-relaxed font-medium">
                   {config.connectionMode === "cloud" ? (
                     <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                      <IconWifi size={13} /> Sincronización Universal por Internet (Mac ↔ Móvil activo)
+                      <IconWifi size={13} /> Sincronización Universal por Internet (activa)
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
@@ -654,7 +654,7 @@ export function SyncSettingsModal({
                 <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2 mt-4">
                   <div className="font-extrabold text-slate-800 flex items-center gap-1.5">
                     <IconSmartphone size={15} className="text-emerald-600" />
-                    Pasos para conectar tu teléfono móvil con este Mac:
+                    Pasos para conectar otro teléfono con este equipo:
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-slate-600 leading-relaxed font-medium">
                     <li>Abre la aplicación en tu teléfono móvil (en el navegador o app APK).</li>

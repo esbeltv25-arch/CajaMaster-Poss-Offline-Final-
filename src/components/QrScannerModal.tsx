@@ -242,7 +242,7 @@ export function QrScannerModal({
 
     if (isInIframe) {
       setCameraError(
-        "El simulador de AI Studio se ejecuta en un marco (iframe) seguro que bloquea la webcam por seguridad. Usa 'Tomar Foto al QR', 'Subir Captura' o ingresa la clave de sala abajo."
+        "Esta página se está mostrando dentro de un marco (iframe) seguro que bloquea la webcam por seguridad. Usa 'Tomar Foto al QR', 'Subir Captura' o ingresa la clave de sala abajo."
       );
       setShowManualInput(true);
       return;
@@ -334,7 +334,7 @@ export function QrScannerModal({
 
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         if (isInIframe) {
-          msg = "El simulador de AI Studio bloquea la cámara por política de iframe. Usa 'Tomar Foto al QR' o ingresa la clave de sala.";
+          msg = "Esta vista dentro de un marco (iframe) bloquea la cámara. Usa 'Tomar Foto al QR' o ingresa la clave de sala.";
         } else if (Capacitor.isNativePlatform()) {
           msg = "Permiso de cámara denegado en Android. Usa 'Tomar Foto al QR' o activa el permiso en los Ajustes del sistema.";
         } else {
@@ -561,7 +561,7 @@ export function QrScannerModal({
         startCamera();
       } else {
         setCameraError(
-          "El simulador de AI Studio se ejecuta en un iframe donde el navegador bloquea la cámara directa. Usa 'Tomar Foto al QR' o ingresa el PIN de la sala."
+          "Esta página se está mostrando dentro de un marco (iframe) donde el navegador bloquea la cámara directa. Usa 'Tomar Foto al QR' o ingresa el PIN de la sala."
         );
         setShowManualInput(true);
       }

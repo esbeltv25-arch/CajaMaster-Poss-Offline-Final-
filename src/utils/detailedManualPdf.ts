@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { deliverPdfFile } from "./pdfExport";
-import { MANUAL_CHAPTERS, MANUAL_EDITION, type ManualSection } from "../content/userManual";
+import { MANUAL_CHAPTERS, MANUAL_EDITION, manualImageUrl, type ManualSection } from "../content/userManual";
 
 /**
  * Detailed, step-by-step user manual as an A4 PDF (cover, table of contents with page
@@ -29,12 +29,50 @@ function pdfText(s: string): string {
   return out.replace(/ {2,}/g, " ").replace(/\( /g, "(").replace(/ \)/g, ")").trim();
 }
 
+interface LoadedImage {
+  data: string;
+  w: number;
+  h: number;
+}
+
+/** Loads a manual screenshot as a data URL with its size (null if it cannot be loaded). */
+async function loadImage(file: string): Promise<LoadedImage | null> {
+  try {
+    const res = await fetch(manualImageUrl(file));
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const data = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    const size = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+      img.src = data;
+    });
+    return { data, ...size };
+  } catch {
+    return null;
+  }
+}
+
 const DARK: [number, number, number] = [15, 23, 42];
 const AMBER: [number, number, number] = [245, 158, 11];
 const MUTED: [number, number, number] = [71, 85, 105];
 const MAIN: [number, number, number] = [15, 23, 42];
 
 export async function generateDetailedManualPdf(businessName = "CajaMaster POS", preferShare = false): Promise<boolean> {
+  const images = new Map<string, LoadedImage>();
+  await Promise.all(
+    MANUAL_CHAPTERS.flatMap((c) => c.sections.flatMap((s) => s.images || [])).map(async (img) => {
+      const loaded = await loadImage(img.file);
+      if (loaded) images.set(img.file, loaded);
+    })
+  );
+
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -149,6 +187,33 @@ export async function generateDetailedManualPdf(businessName = "CajaMaster POS",
 
     s.tips?.forEach((t) => box("CONSEJO:", t, [236, 253, 245], [167, 243, 208], [6, 95, 70]));
     if (s.warning) box("IMPORTANTE:", s.warning, [255, 251, 235], [253, 230, 138], [120, 53, 15]);
+    s.images?.forEach((img) => {
+      const loaded = images.get(img.file);
+      if (!loaded) return;
+      // phone screenshot: at most 60 mm wide and 105 mm tall, centred, caption below
+      let w = 60;
+      let h = (loaded.h / loaded.w) * w;
+      if (h > 105) {
+        h = 105;
+        w = (loaded.w / loaded.h) * h;
+      }
+      const capLines = wrap(img.caption, 120, 8.5);
+      ensure(h + capLines.length * 3.8 + 8);
+      const x = (W - w) / 2;
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.4);
+      doc.addImage(loaded.data, "JPEG", x, y + 1, w, h);
+      doc.roundedRect(x - 0.4, y + 0.6, w + 0.8, h + 0.8, 2, 2, "S");
+      y += h + 5;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MUTED);
+      capLines.forEach((l) => {
+        doc.text(l, W / 2, y, { align: "center" });
+        y += 3.8;
+      });
+      y += 3;
+    });
     y += 3;
   };
 

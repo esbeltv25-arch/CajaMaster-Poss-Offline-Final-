@@ -219,7 +219,7 @@ export function CameraCaptureModal({
       if (isInIframe) {
         setIsInitializing(false);
         setCameraError(
-          "El simulador de AI Studio se ejecuta en un marco seguro (iframe) que bloquea el acceso directo a la cámara por política del navegador. Puedes abrir la aplicación en una Pestaña Nueva o tomar/subir una foto."
+          "Esta página se está mostrando dentro de un marco seguro (iframe) que bloquea el acceso directo a la cámara por política del navegador. Puedes abrir la aplicación en una Pestaña Nueva o tomar/subir una foto."
         );
         setErrorType("IframeRestriction");
         return;
@@ -366,7 +366,7 @@ export function CameraCaptureModal({
         initCamera();
       } else {
         setCameraError(
-          "El simulador de AI Studio se ejecuta en un iframe donde el navegador bloquea la cámara por seguridad. Abre la app en una Pestaña Nueva o toma una foto desde tu móvil."
+          "Esta página se está mostrando dentro de un marco (iframe) donde el navegador bloquea la cámara por seguridad. Abre la app en una Pestaña Nueva o toma una foto desde tu móvil."
         );
         setErrorType("IframeRestriction");
       }

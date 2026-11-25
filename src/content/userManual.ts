@@ -20,6 +20,19 @@ export interface ManualSection {
   warning?: string;
   /** Marked as «Nuevo». */
   isNew?: boolean;
+  /** Screenshots of the app (files in public/manual/), shown after the text. */
+  images?: ManualImage[];
+}
+
+export interface ManualImage {
+  /** File name inside public/manual/ */
+  file: string;
+  caption: string;
+}
+
+/** URL of a manual screenshot (works on the web, in the APK and in OTA bundles). */
+export function manualImageUrl(file: string): string {
+  return `${import.meta.env.BASE_URL || "/"}manual/${file}`;
 }
 
 export interface ManualChapter {
@@ -43,6 +56,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Activar la licencia",
+        images: [{ file: "activacion.jpg", caption: "Pantalla de activación: arriba el ID del dispositivo con los botones de WhatsApp y Telegram; abajo, «Pegar clave» y «ACTIVAR LICENCIA»." }],
         intro:
           "La primera vez que abres la app aparece la pantalla de activación. Cada licencia es única para un dispositivo: no se puede copiar a otro teléfono.",
         steps: [
@@ -90,6 +104,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Añadir productos al ticket",
+        images: [{ file: "caja.jpg", caption: "Pestaña CAJA: buscador, categorías y productos. El número amarillo indica cuántas unidades hay en el ticket; abajo a la derecha, el botón para cobrar." }],
         steps: [
           "Abre la pestaña «CAJA».",
           "Toca un producto para añadir una unidad. Cada toque suma otra.",
@@ -126,6 +141,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Cobrar en efectivo",
+        images: [{ file: "cobro.jpg", caption: "Cobro en efectivo: total a cobrar, método «Efectivo», efectivo recibido, billetes rápidos y el «CAMBIO A DEVOLVER»." }],
         steps: [
           "Toca «Cobrar» y elige «Efectivo».",
           "El campo «Efectivo recibido» empieza vacío: escribe lo que entrega el cliente o toca los billetes rápidos (se suman).",
@@ -158,6 +174,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Ticket, recibo e historial",
+        images: [{ file: "recibo.jpg", caption: "Recibo tras la venta: botones PDF, WhatsApp y Telegram arriba; el importe en la moneda del cobro y su equivalente en divisas." }],
         bullets: [
           "Tras cobrar se abre el recibo: puedes imprimirlo, guardarlo en PDF o enviarlo por WhatsApp o Telegram.",
           "El recibo indica la moneda del cobro y «Atendido por» con el nombre del vendedor del turno.",
@@ -183,6 +200,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Configurar las tasas",
+        images: [{ file: "tasas.jpg", caption: "Ajustes → Moneda & Tipos de Cambio: para cada divisa, «elTOQUE» o «Manual», el ajuste en CUP y el botón «Guardar y aplicar tasas»." }],
         steps: [
           "Ve a Ajustes → «Moneda & Tipos de Cambio».",
           "Para cada divisa elige «elTOQUE» (sigue la tasa del mercado informal) o «Manual» (tú escribes el valor).",
@@ -213,6 +231,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Crear un producto",
+        images: [{ file: "producto.jpg", caption: "Ficha de producto: foto («Tomar Foto»), nombre, categoría, stock, precio de venta y costo." }],
         steps: [
           "Abre la pestaña «STOCK» y toca «+ AÑADIR PRODUCTO».",
           "Foto: «Tomar Foto» con la cámara o elige una imagen; también puedes usar un icono.",
@@ -227,6 +246,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Editar o eliminar un producto",
+        images: [{ file: "stock.jpg", caption: "Pestaña STOCK: valoración del inventario, botones «Movimiento», «Categorías», PDF y CSV, y avisos de stock bajo." }],
         steps: [
           "En «STOCK» toca el producto para abrir su ficha, cambia lo que necesites y guarda.",
           "Para eliminarlo, usa el botón de eliminar del producto en la lista de STOCK y confirma.",
@@ -235,6 +255,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Entradas, mermas y ajustes (Kardex)",
+        images: [{ file: "movimiento.jpg", caption: "Registrar Movimiento de Stock: tipo (Entrada, Salida / Merma, Ajuste Físico), producto, cantidad, costo, motivo y responsable." }],
         intro: "Cada cambio de existencias queda registrado con fecha, motivo y responsable.",
         steps: [
           "En «STOCK», toca «Movimiento» en el producto: se abre «Registrar Movimiento de Stock».",
@@ -263,6 +284,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Activar los usuarios (una sola vez)",
+        images: [{ file: "usuarios.jpg", caption: "Ajustes → Usuarios y turnos: turno abierto, lista de usuarios, «Seguridad de la pantalla» y el formulario «Añadir usuario»." }],
         intro: "Es opcional. Mientras no crees usuarios, la app funciona sin PIN.",
         steps: [
           "Ve a Ajustes → «Usuarios y turnos».",
@@ -276,6 +298,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Empezar y cambiar de turno",
+        images: [{ file: "turno.jpg", caption: "«¿Quién trabaja ahora?»: cada persona toca su nombre y escribe su PIN." }],
         steps: [
           "Sin turno abierto aparece «¿Quién trabaja ahora?». Cada persona toca su nombre y escribe su PIN.",
           "El nombre del vendedor del turno se ve en la barra superior.",
@@ -299,6 +322,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Desbloquear",
+        images: [{ file: "bloqueo.jpg", caption: "Pantalla bloqueada: indica de quién es el turno; «Otro usuario» permite que entre otra persona con su propio PIN." }],
         steps: [
           "En la pantalla bloqueada, escribe el PIN del vendedor del turno o el de un administrador y toca «Entrar».",
           "Si entra otra persona, toca «Otro usuario», elige su nombre y escribe su PIN: empieza su propio turno y lo que venda queda a su nombre.",
@@ -324,6 +348,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Hacer el arqueo paso a paso",
+        images: [{ file: "cierre-billetes.jpg", caption: "Arqueo: fondo de caja inicial, efectivo contado y la Calculadora de Billetes de Cuba con los billetes de 20.000 y 10.000." }, { file: "cierre-monedas.jpg", caption: "Efectivo por moneda: lo esperado en cada moneda (CUP y divisas) y la casilla para escribir lo contado." }],
         steps: [
           "Abre la pestaña «CIERRE».",
           "Escribe el «Fondo de caja inicial» (el efectivo con el que empezó el turno).",
@@ -336,6 +361,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Después del cierre",
+        images: [{ file: "informe-z.jpg", caption: "Informe Z: balance de caja, arqueo por moneda y descuadre, con botones para PDF, CSV, WhatsApp, Telegram, correo y copiar." }],
         bullets: [
           "El Informe Z queda en «Historial de Cierres Registrados» → «Ver Z-Report».",
           "Desde el informe: enviar por WhatsApp o Telegram, correo, copiar el texto o imprimir / guardar PDF con líneas de firma.",
@@ -355,6 +381,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Generar el informe",
+        images: [{ file: "ipve.jpg", caption: "Pestaña IPVE: periodo del informe y botones para compartir, imprimir o descargar el documento oficial en PDF." }],
         steps: [
           "Abre la pestaña «IPVE».",
           "Elige el periodo: hoy, semana, mes, mes anterior, todo o un rango «Desde / Hasta».",
@@ -389,6 +416,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Crear un pedido",
+        images: [{ file: "envio-nuevo.jpg", caption: "Nuevo pedido a domicilio: «Pegar WhatsApp / Telegram» o el formulario con cliente, teléfono, dirección y productos." }],
         steps: [
           "Abre la pestaña «ENVÍOS» → «+ Nuevo Pedido».",
           "Opción rápida: «Pegar WhatsApp / Telegram», pega el texto de la comanda y toca «Autocompletar Formulario».",
@@ -471,6 +499,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
       },
       {
         title: "Conectar un dispositivo",
+        images: [{ file: "sincronizacion.jpg", caption: "Sincronización Multidispositivo: rol del equipo (principal o secundario) y modo de conexión; la pestaña «Vincular / Código QR» muestra el código." }],
         steps: [
           "En la caja principal: Ajustes → «Sincronización Multidispositivo» → «Vincular / Ajustar». Elige rol «Terminal Principal».",
           "Elige el modo: «Red Local Wi-Fi» (sin internet, mismo router) o «Nube / P2P» (por internet).",
@@ -490,6 +519,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Vincular una impresora",
+        images: [{ file: "impresora.jpg", caption: "Gestión de impresoras: impresoras vinculadas, «Vincular Nueva», «Probar» e «Imprimir con esta»." }],
         steps: [
           "Ajustes → «Impresoras & Terminales Térmicas» → «Gestionar» → «Vincular Nueva».",
           "Elige el tipo: Bluetooth (enciende la impresora y el Bluetooth), Wi-Fi/IP (dirección IP y puerto, normalmente 9100), USB o «Impresora del Sistema» (diálogo de impresión o PDF).",
@@ -512,6 +542,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
     sections: [
       {
         title: "Hacer una copia",
+        images: [{ file: "respaldo.jpg", caption: "Gestor de Respaldos: «Respaldo Total del Sistema (JSON)» guarda todo; también hay copias parciales y CSV." }],
         steps: [
           "Ajustes → «Copias de Seguridad & Respaldos JSON» → «Abrir Gestor de Respaldos».",
           "Elige «Respaldo Total del Sistema (JSON)» para guardarlo todo (productos, ventas, stock, cierres, configuración).",
