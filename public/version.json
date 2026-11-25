@@ -1,9 +1,9 @@
 {
-  "version": "1.4.1",
-  "versionCode": 1110,
-  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.1.zip",
+  "version": "1.4.2",
+  "versionCode": 1120,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.2.zip",
   "mandatory": false,
-  "changelog": "Usuarios y turnos con PIN (ventas y cierre Z a nombre del vendedor, cierre por turno), scroll de productos en Caja corregido y borrado de pedidos de envío.",
+  "changelog": "Seguridad de la pantalla: candado para bloquear al instante, opción de pedir PIN al abrir la app y bloqueo automático tras X minutos sin uso (el turno sigue abierto). Incluye usuarios y turnos con PIN, scroll de Caja y borrado de pedidos de envío.",
   "releaseDate": "2026-11-25",
   "minNativeVersionCode": 1000
 }

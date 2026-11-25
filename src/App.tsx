@@ -24,7 +24,7 @@ import {
 import type { Product } from "./types";
 import { actions, getStoreRates } from "./store";
 import { updateRatesFromElToque } from "./services/eltoqueRates";
-import { useUserSession } from "./services/userSession";
+import { useUserSession, startLockWatcher } from "./services/userSession";
 import { ShiftLockScreen } from "./components/ShiftLockScreen";
 
 type View =
@@ -39,6 +39,8 @@ function AppContent() {
   const [quickGuideSection, setQuickGuideSection] = useState<GuideSection>("wizard");
   const [otaAvailable, setOtaAvailable] = useState<RemoteVersionInfo | null>(null);
   const userSession = useUserSession();
+  // Automatic lock (inactivity / reopening the app), configured in Ajustes → Usuarios y turnos
+  useEffect(() => startLockWatcher(), []);
   const [otaDismissed, setOtaDismissed] = useState(false);
   const [otaBusy, setOtaBusy] = useState(false);
   const [otaStatus, setOtaStatus] = useState<string>("");
@@ -112,6 +114,9 @@ function AppContent() {
     userSession.session && userSession.users.some((u) => u.id === userSession.session!.userId);
   if (userSession.users.length > 0 && !activeShift) {
     return <ShiftLockScreen />;
+  }
+  if (userSession.users.length > 0 && userSession.locked) {
+    return <ShiftLockScreen locked />;
   }
 
   function logout() {

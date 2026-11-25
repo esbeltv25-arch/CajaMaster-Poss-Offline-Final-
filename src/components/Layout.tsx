@@ -17,9 +17,10 @@ import {
   IconTruck,
   IconChevronLeft,
   IconChevronRight,
+  IconLock,
 } from "./Icons";
 import { useTheme } from "../themeContext";
-import { useUserSession, endShift } from "../services/userSession";
+import { useUserSession, endShift, lockNow } from "../services/userSession";
 import { useStore, actions } from "../store";
 import { ConnectivityModal } from "./ConnectivityModal";
 import { BackupModal } from "./BackupModal";
@@ -261,6 +262,18 @@ export function TopBar({
                 {userSession.session.userName.slice(0, 1).toUpperCase()}
               </span>
               <span className="truncate">{userSession.session.userName}</span>
+            </button>
+          )}
+          {userSession.session && (
+            <button
+              type="button"
+              id="btn-lock-now"
+              onClick={() => lockNow()}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl neu-sm flex items-center justify-center text-[var(--color-ink)] cursor-pointer shrink-0"
+              title="Bloquear pantalla (el turno sigue abierto)"
+              aria-label="Bloquear pantalla"
+            >
+              <IconLock size={14} />
             </button>
           )}
 

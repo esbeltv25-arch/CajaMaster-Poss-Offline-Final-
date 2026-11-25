@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { NumericInput } from "./NumericInput";
 import {
   useUserSession,
   createUser,
   deleteUser,
   changePin,
   endShift,
+  lockNow,
+  saveLockSettings,
+  AUTO_LOCK_MAX_MINUTES,
   isAdminSession,
   ROLE_LABELS,
   type UserRole,
@@ -15,7 +19,7 @@ import {
  * Only an administrator can create, delete users or change PINs.
  */
 export function UsersCard() {
-  const { users, session } = useUserSession();
+  const { users, session, lock } = useUserSession();
   const canManage = isAdminSession();
   const [name, setName] = useState("");
   const [role, setRole] = useState<UserRole>("seller");
@@ -137,6 +141,95 @@ export function UsersCard() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {users.length > 0 && (
+        <div className="rounded-2xl bg-white border border-slate-200 p-3 space-y-2.5" id="card-lock-settings">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-extrabold text-slate-900">🔒 Seguridad de la pantalla</div>
+            {session && (
+              <button
+                type="button"
+                id="btn-lock-now-settings"
+                onClick={() => lockNow()}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-[11px] font-extrabold cursor-pointer"
+              >
+                Bloquear ahora
+              </button>
+            )}
+          </div>
+          <p className="text-[10.5px] text-slate-500 leading-snug">
+            Al bloquear, el turno sigue abierto: solo el vendedor del turno o un administrador lo desbloquean con su PIN.
+            También puedes bloquear en cualquier momento con el candado de la barra superior.
+          </p>
+          <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              id="lock-on-open"
+              className="mt-0.5"
+              disabled={!canManage}
+              checked={lock.lockOnOpen}
+              onChange={(e) => saveLockSettings({ lockOnOpen: e.target.checked })}
+            />
+            <span>
+              Pedir PIN al abrir la app
+              <span className="block font-semibold text-slate-500">
+                También al volver a la app después de más de 30 segundos fuera de ella.
+              </span>
+            </span>
+          </label>
+          <div className="space-y-1.5">
+            <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                id="auto-lock-enabled"
+                className="mt-0.5"
+                disabled={!canManage}
+                checked={lock.autoLockMinutes > 0}
+                onChange={(e) => saveLockSettings({ autoLockMinutes: e.target.checked ? 5 : 0 })}
+              />
+              <span>Bloquear si nadie toca la pantalla durante un tiempo</span>
+            </label>
+            {lock.autoLockMinutes > 0 && (
+              <div className="pl-6 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                  <span>Bloquear tras</span>
+                  <NumericInput
+                    id="auto-lock-minutes"
+                    integer
+                    emptyValue={lock.autoLockMinutes}
+                    disabled={!canManage}
+                    value={lock.autoLockMinutes}
+                    onValueChange={(n) => {
+                      if (n > 0) saveLockSettings({ autoLockMinutes: n });
+                    }}
+                    className="w-16 neu-inset rounded-lg px-2 h-8 text-xs font-extrabold text-center bg-transparent outline-none"
+                  />
+                  <span>minutos sin uso (1 a {AUTO_LOCK_MAX_MINUTES})</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[1, 2, 5, 10, 15, 30, 60].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      id={`auto-lock-${m}`}
+                      disabled={!canManage}
+                      onClick={() => saveLockSettings({ autoLockMinutes: m })}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold cursor-pointer disabled:opacity-50 ${
+                        lock.autoLockMinutes === m ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {m < 60 ? `${m} min` : "1 hora"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {!canManage && (
+            <p className="text-[10.5px] text-slate-500">Solo un administrador puede cambiar estas opciones.</p>
+          )}
         </div>
       )}
 

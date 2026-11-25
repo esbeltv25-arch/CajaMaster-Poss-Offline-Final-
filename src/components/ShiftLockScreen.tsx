@@ -1,20 +1,35 @@
 import { useState } from "react";
 import { AppLogo } from "./AppLogo";
 import { useStore } from "../store";
-import { useUserSession, startShift, ROLE_LABELS, type AppUser } from "../services/userSession";
+import { useUserSession, startShift, unlockShift, ROLE_LABELS, type AppUser } from "../services/userSession";
 
 /**
  * "¿Quién trabaja ahora?" — shown when users exist and no shift is open.
  * The chosen user enters their PIN; from then on sales and the Z closing are signed with their name.
+ *
+ * With `locked`, the shift is still open but the screen is locked: the seller on shift
+ * (or an administrator) unlocks it with their PIN, or another user can start their own shift.
  */
-export function ShiftLockScreen() {
+export function ShiftLockScreen({ locked = false }: { locked?: boolean }) {
   const state = useStore();
-  const { users } = useUserSession();
-  const [selected, setSelected] = useState<AppUser | null>(users.length === 1 ? users[0] : null);
+  const { users, session } = useUserSession();
+  const [unlockMode, setUnlockMode] = useState(locked && Boolean(session));
+  const shiftUser = session ? users.find((u) => u.id === session.userId) || null : null;
+  const [selected, setSelected] = useState<AppUser | null>(
+    unlockMode ? shiftUser : users.length === 1 ? users[0] : null
+  );
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const submit = (value = pin) => {
+    if (unlockMode) {
+      const res = unlockShift(value);
+      if (!res.ok) {
+        setError(res.error || "PIN incorrecto.");
+        setPin("");
+      }
+      return;
+    }
     if (!selected) return;
     const res = startShift(selected.id, value);
     if (!res.ok) {
@@ -38,7 +53,13 @@ export function ShiftLockScreen() {
         <div className="flex flex-col items-center gap-2">
           <AppLogo size={60} rounded="rounded-2xl" className="shadow-xl ring-4 ring-amber-400/25" />
           <h1 className="font-extrabold text-xl text-center">{state.business.name || "CajaMaster POS"}</h1>
-          <p className="text-emerald-200/80 text-sm font-semibold">¿Quién trabaja ahora?</p>
+          {unlockMode && session ? (
+            <p className="text-amber-300 text-sm font-bold text-center" id="shift-locked-title">
+              🔒 Pantalla bloqueada · turno de {session.userName}
+            </p>
+          ) : (
+            <p className="text-emerald-200/80 text-sm font-semibold">¿Quién trabaja ahora?</p>
+          )}
         </div>
 
         {!selected ? (
@@ -68,19 +89,25 @@ export function ShiftLockScreen() {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-extrabold truncate">{selected.name}</div>
-                <div className="text-[11px] text-white/60">{ROLE_LABELS[selected.role]} · introduce tu PIN</div>
+                <div className="text-[11px] text-white/60">
+                  {unlockMode
+                    ? "PIN de este vendedor o de un administrador para continuar"
+                    : `${ROLE_LABELS[selected.role]} · introduce tu PIN`}
+                </div>
               </div>
-              {users.length > 1 && (
+              {(users.length > 1 || unlockMode) && (
                 <button
                   type="button"
+                  id={unlockMode ? "shift-other-user" : undefined}
                   onClick={() => {
+                    setUnlockMode(false);
                     setSelected(null);
                     setPin("");
                     setError(null);
                   }}
                   className="text-xs font-bold text-amber-300 underline cursor-pointer shrink-0"
                 >
-                  Cambiar
+                  {unlockMode ? "Otro usuario" : "Cambiar"}
                 </button>
               )}
             </div>
@@ -139,7 +166,9 @@ export function ShiftLockScreen() {
         )}
 
         <p className="text-center text-[11px] text-white/45 leading-relaxed">
-          Las ventas, movimientos de stock y el cierre de caja quedarán registrados a nombre de quien inicie el turno.
+          {unlockMode
+            ? "El turno sigue abierto. Si entra otro usuario con su PIN, empieza su propio turno y lo que venda quedará a su nombre."
+            : "Las ventas, movimientos de stock y el cierre de caja quedarán registrados a nombre de quien inicie el turno."}
         </p>
       </div>
     </div>
