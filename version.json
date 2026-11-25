@@ -1,9 +1,9 @@
 {
-  "version": "1.4.4",
-  "versionCode": 1140,
-  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.4.zip",
+  "version": "1.4.5",
+  "versionCode": 1150,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.5.zip",
   "mandatory": false,
-  "changelog": "Usuarios y turnos con PIN, bloqueo de pantalla, cámara de productos corregida, Telegram directo, manual completo con imágenes, tamaño de letra y botones ajustable y cierre de caja por moneda.",
+  "changelog": "Modo oscuro más cómodo: fondo gris carbón, textos y precios bien legibles, selector de modo de color corregido. La versión mostrada en Ajustes se actualiza sola.",
   "releaseDate": "2026-11-25",
   "minNativeVersionCode": 1000
 }
