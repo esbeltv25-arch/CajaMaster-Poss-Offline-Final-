@@ -4,6 +4,10 @@
 		"classpath": "com.capacitorjs.community.plugins.bluetoothle.BluetoothLe"
 	},
 	{
+		"pkg": "@capacitor/app",
+		"classpath": "com.capacitorjs.plugins.app.AppPlugin"
+	},
+	{
 		"pkg": "@capacitor/camera",
 		"classpath": "com.capacitorjs.plugins.camera.CameraPlugin"
 	},

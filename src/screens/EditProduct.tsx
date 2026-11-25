@@ -1,4 +1,5 @@
-import { useState, type ReactNode, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, type ReactNode, useRef, type ChangeEvent } from "react";
+import { saveProductDraftForCamera, useRestoredCameraPhoto, consumeRestoredCameraPhoto, type ProductDraft } from "../services/productDraft";
 import { allowLeavingApp, leftAppDone } from "../services/userSession";
 import { NumericInput } from "../components/NumericInput";
 import { actions, useStore } from "../store";
@@ -57,16 +58,23 @@ const UNITS_OF_MEASURE = [
 ];
 
 export function EditProductScreen({
-  initial,
+  initial: initialProp,
+  draft,
   onClose,
 }: {
   initial?: Product;
+  /** Form saved before the camera when Android closed the app (reopened at start-up). */
+  draft?: ProductDraft;
   onClose: () => void;
 }) {
   const store = useStore();
   const categories = store.categories || [];
+  const draftProduct = draft?.productId ? (store.products || []).find((p) => p.id === draft.productId) : undefined;
+  const baseProduct = initialProp ?? draftProduct;
+  // Form values: the saved draft (if any) over the product being edited
+  const initial: Partial<Product> | undefined = draft ? { ...(baseProduct || {}), ...draft.fields } : baseProduct;
 
-  const isNew = !initial;
+  const isNew = !baseProduct;
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(
     initial?.category ?? (categories[0]?.name || "General")
@@ -81,6 +89,38 @@ export function EditProductScreen({
   const [image, setImage] = useState<string | undefined>(initial?.image);
   const [color, setColor] = useState(initial?.color ?? "#0E3A2F");
   const [lowAlert, setLowAlert] = useState(initial?.lowStockAlert ?? 5);
+
+  // Photo taken while Android had closed the app: arrives after the app restarts
+  const restoredPhoto = useRestoredCameraPhoto();
+  const [restoredToast, setRestoredToast] = useState<string | null>(
+    draft ? "Se recuperó el producto que estabas creando antes de abrir la cámara." : null
+  );
+  useEffect(() => {
+    if (!restoredPhoto) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const blob = await (await fetch(restoredPhoto)).blob();
+        const compressed = await compressImage(blob, 600, 600, 0.85);
+        if (!cancelled) {
+          setImage(compressed);
+          setRestoredToast("✓ Foto recuperada.");
+        }
+      } catch (e) {
+        console.error("Error recovering camera photo", e);
+      } finally {
+        consumeRestoredCameraPhoto();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [restoredPhoto]);
+  useEffect(() => {
+    if (!restoredToast) return;
+    const t = setTimeout(() => setRestoredToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [restoredToast]);
 
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -566,7 +606,20 @@ export function EditProductScreen({
         onCapture={(img) => setImage(img)}
         currentImage={image}
         productName={name}
+        onBeforeNativeCamera={() =>
+          saveProductDraftForCamera(baseProduct?.id, {
+            name, category, stock, cost, price, unit, barcode, active, emoji, image, color, lowStockAlert: lowAlert,
+          })
+        }
       />
+      {restoredToast && (
+        <div
+          id="product-restored-toast"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[80] px-4 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold shadow-lg max-w-[90vw] text-center"
+        >
+          {restoredToast}
+        </div>
+      )}
 
       {/* Emoji Picker Sheet */}
       {showEmojiPicker && (

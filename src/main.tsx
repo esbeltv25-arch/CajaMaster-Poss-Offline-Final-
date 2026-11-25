@@ -4,6 +4,10 @@ import { initDeviceIdentity } from './utils/licenseSecurity';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
+import { listenForRestoredCameraPhoto } from './services/productDraft';
+
+// Photo taken while Android had closed the app for the camera (see services/productDraft)
+void listenForRestoredCameraPhoto();
 
 // Diagnóstico de entorno y contexto seguro (exigido para WebRTC)
 console.info('[CajaMaster Boot] Entorno de ejecución:');

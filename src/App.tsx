@@ -26,15 +26,20 @@ import { actions, getStoreRates } from "./store";
 import { updateRatesFromElToque } from "./services/eltoqueRates";
 import { useUserSession, startLockWatcher } from "./services/userSession";
 import { ShiftLockScreen } from "./components/ShiftLockScreen";
+import { takeProductDraft, type ProductDraft } from "./services/productDraft";
 
 type View =
   | { kind: "tab"; tab: Tab }
-  | { kind: "edit"; product?: Product };
+  | { kind: "edit"; product?: Product; draft?: ProductDraft };
 
 function AppContent() {
   const [activated, setActivated] = useState(() => getLicenseStatus().isActivated);
   const [deviceId] = useState(() => getPersistentDeviceId());
-  const [view, setView] = useState<View>({ kind: "tab", tab: "caja" });
+  // If Android closed the app while the camera was open, reopen the product form that was being filled
+  const [view, setView] = useState<View>(() => {
+    const draft = takeProductDraft();
+    return draft ? { kind: "edit", draft } : { kind: "tab", tab: "caja" };
+  });
   const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [quickGuideSection, setQuickGuideSection] = useState<GuideSection>("wizard");
   const [otaAvailable, setOtaAvailable] = useState<RemoteVersionInfo | null>(null);
@@ -148,6 +153,7 @@ function AppContent() {
               >
                 <EditProductScreen
                   initial={view.product}
+                  draft={view.draft}
                   onClose={() => setView({ kind: "tab", tab: "inventario" })}
                 />
               </motion.div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent } from "react";
 import { allowLeavingApp, leftAppDone } from "../services/userSession";
+import { clearProductDraft } from "../services/productDraft";
 import {
   IconCamera,
   IconRotate,
@@ -20,6 +21,8 @@ export interface CameraCaptureModalProps {
   onCapture: (imageDataUrl: string) => void;
   currentImage?: string;
   productName?: string;
+  /** Called right before the system camera app opens (to save the form in case Android closes the app). */
+  onBeforeNativeCamera?: () => void;
 }
 
 interface VideoDeviceInfo {
@@ -43,6 +46,7 @@ export function CameraCaptureModal({
   onCapture,
   currentImage,
   productName,
+  onBeforeNativeCamera,
 }: CameraCaptureModalProps) {
   const isMobile =
     typeof navigator !== "undefined" &&
@@ -403,12 +407,20 @@ export function CameraCaptureModal({
 
         // Opening the system camera sends this app to the background: that must not lock it
         allowLeavingApp();
+        // Android may close the app while its camera is open: save the form first
+        onBeforeNativeCamera?.();
         const photo = await Camera.getPhoto({
-          quality: 85,
+          quality: 80,
+          // A 1200 px photo is plenty for a product card and uses far less memory than the
+          // full camera resolution (which makes Android more likely to close the app)
+          width: 1200,
+          height: 1200,
+          correctOrientation: true,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
           source: CameraSource.Camera,
         });
+        clearProductDraft();
 
         if (photo.dataUrl) {
           const compressed = await compressImage(
@@ -425,6 +437,7 @@ export function CameraCaptureModal({
         console.warn("[CameraCaptureModal] Camera.getPhoto falló o cancelado, usando selector de cámara:", err);
       } finally {
         leftAppDone();
+        clearProductDraft();
       }
     }
 
