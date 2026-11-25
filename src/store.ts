@@ -512,7 +512,16 @@ const listeners = new Set<() => void>();
 
 let storageWarningShown = false;
 
-function emit() {
+/**
+ * Writes the whole state to localStorage. The state includes product photos (data URLs),
+ * so serialising it can take a noticeable time: it is done shortly AFTER the screen has
+ * been updated (see schedulePersist), not inside every tap.
+ */
+function persistNow() {
+  if (persistTimer !== null) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
   } catch (err) {
@@ -531,32 +540,27 @@ function emit() {
       }, 0);
     }
   }
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+/** Groups quick successive changes (several taps) into one save, ~0.25 s later. */
+function schedulePersist() {
+  if (persistTimer !== null) return;
+  persistTimer = setTimeout(persistNow, 250);
+}
+
+function emit() {
+  // Update the screen first, save right after
   listeners.forEach((l) => l());
+  schedulePersist();
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
-    } catch (e) {
-      console.error("Failed to save state on beforeunload:", e);
-    }
-  });
-  window.addEventListener("pagehide", () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
-    } catch (e) {
-      console.error("Failed to save state on pagehide:", e);
-    }
-  });
+  // Leaving or closing the app: save immediately (pending changes included)
+  window.addEventListener("beforeunload", () => persistNow());
+  window.addEventListener("pagehide", () => persistNow());
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(_state));
-      } catch (e) {
-        console.error("Failed to save state on visibility hidden:", e);
-      }
-    }
+    if (document.visibilityState === "hidden") persistNow();
   });
 }
 
