@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NumericInput } from "./NumericInput";
 import { useStore, actions } from "../store";
 import { IconCoins, IconRefreshCw } from "./Icons";
 import {
@@ -188,14 +189,12 @@ export function ExchangeRatesCard() {
                     elTOQUE: <b className="font-mono text-slate-900">{ref ? ref.toLocaleString("es-ES") : "—"}</b>
                   </span>
                   <span>Ajuste (CUP):</span>
-                  <input
-                    type="number"
+                  <NumericInput
+                    
                     id={`rate-offset-${c}`}
                     value={sync.offsets[c] || ""}
                     placeholder="0"
-                    onChange={(e) =>
-                      setSync((s) => ({ ...s, offsets: { ...s.offsets, [c]: parseFloat(e.target.value || "0") || 0 } }))
-                    }
+                    onValueChange={(n) => setSync((s) => ({ ...s, offsets: { ...s.offsets, [c]: n } }))}
                     className="w-20 neu-inset rounded-lg px-2 h-8 text-xs font-extrabold text-center bg-transparent outline-none"
                   />
                   <span className="text-[10px] text-slate-400">ej. −10 = 10 CUP por debajo</span>
@@ -203,11 +202,11 @@ export function ExchangeRatesCard() {
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-slate-600">Tasa manual:</span>
-                  <input
-                    type="number"
+                  <NumericInput
+                    
                     id={`rate-manual-${c}`}
                     value={manual[c]}
-                    onChange={(e) => setManual((m) => ({ ...m, [c]: parseFloat(e.target.value || "0") }))}
+                    onValueChange={(n) => setManual((m) => ({ ...m, [c]: n }))}
                     className="w-28 neu-inset rounded-lg px-2 h-8 text-xs font-extrabold text-center bg-transparent outline-none"
                   />
                   <span className="text-[11px] text-slate-500">CUP</span>

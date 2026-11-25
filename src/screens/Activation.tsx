@@ -88,7 +88,7 @@ export function ActivationScreen({
   return (
     <div
       id="activation-screen"
-      className="flex-1 flex flex-col items-center justify-center px-4 py-8 min-h-screen bg-gradient-to-b from-[#081814] via-[#0f2c25] to-[#081814] text-white"
+      className="flex-1 flex flex-col items-center justify-center px-4 py-8 min-h-[calc(100dvh/var(--app-scale,1))] bg-gradient-to-b from-[#081814] via-[#0f2c25] to-[#081814] text-white"
     >
       <div className="w-full max-w-md">
         {/* App Logo & Header */}

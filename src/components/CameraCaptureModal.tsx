@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent } from "react";
+import { allowLeavingApp, leftAppDone } from "../services/userSession";
+import { clearProductDraft } from "../services/productDraft";
 import {
   IconCamera,
   IconRotate,
@@ -19,6 +21,8 @@ export interface CameraCaptureModalProps {
   onCapture: (imageDataUrl: string) => void;
   currentImage?: string;
   productName?: string;
+  /** Called right before the system camera app opens (to save the form in case Android closes the app). */
+  onBeforeNativeCamera?: () => void;
 }
 
 interface VideoDeviceInfo {
@@ -42,6 +46,7 @@ export function CameraCaptureModal({
   onCapture,
   currentImage,
   productName,
+  onBeforeNativeCamera,
 }: CameraCaptureModalProps) {
   const isMobile =
     typeof navigator !== "undefined" &&
@@ -218,7 +223,7 @@ export function CameraCaptureModal({
       if (isInIframe) {
         setIsInitializing(false);
         setCameraError(
-          "El simulador de AI Studio se ejecuta en un marco seguro (iframe) que bloquea el acceso directo a la cámara por política del navegador. Puedes abrir la aplicación en una Pestaña Nueva o tomar/subir una foto."
+          "Esta página se está mostrando dentro de un marco seguro (iframe) que bloquea el acceso directo a la cámara por política del navegador. Puedes abrir la aplicación en una Pestaña Nueva o tomar/subir una foto."
         );
         setErrorType("IframeRestriction");
         return;
@@ -356,8 +361,18 @@ export function CameraCaptureModal({
     [previewImage, selectedDeviceId, facingMode, isMobile, isInIframe, attachStreamToVideo, updateDeviceList, stopStream]
   );
 
-  // Inicializar al abrir modal
+  // initCamera / stopStream change identity whenever the captured photo changes. The effect
+  // below must NOT re-run because of that: it would discard the photo just taken (previewImage
+  // reset to null) and restart the camera — the shutter seemed to "do nothing".
+  const initCameraRef = useRef(initCamera);
+  initCameraRef.current = initCamera;
+  const stopStreamRef = useRef(stopStream);
+  stopStreamRef.current = stopStream;
+
+  // Inicializar al abrir modal (solo al abrir o cerrar)
   useEffect(() => {
+    const initCamera = initCameraRef.current;
+    const stopStream = stopStreamRef.current;
     if (isOpen) {
       // Siempre iniciamos con la cámara activa para tomar una nueva foto (no congelar en foto antigua)
       setPreviewImage(null);
@@ -365,7 +380,7 @@ export function CameraCaptureModal({
         initCamera();
       } else {
         setCameraError(
-          "El simulador de AI Studio se ejecuta en un iframe donde el navegador bloquea la cámara por seguridad. Abre la app en una Pestaña Nueva o toma una foto desde tu móvil."
+          "Esta página se está mostrando dentro de un marco (iframe) donde el navegador bloquea la cámara por seguridad. Abre la app en una Pestaña Nueva o toma una foto desde tu móvil."
         );
         setErrorType("IframeRestriction");
       }
@@ -378,9 +393,9 @@ export function CameraCaptureModal({
     }
 
     return () => {
-      stopStream();
+      stopStreamRef.current();
     };
-  }, [isOpen, isInIframe, initCamera, stopStream]);
+  }, [isOpen, isInIframe]);
 
   // Captura Directa con Cámara del Dispositivo (100% Infalible en Móvil y Android)
   const handleDirectCameraCapture = useCallback(async () => {
@@ -400,12 +415,22 @@ export function CameraCaptureModal({
           console.warn("[CameraCaptureModal] Check permissions advertencia:", permErr);
         }
 
+        // Opening the system camera sends this app to the background: that must not lock it
+        allowLeavingApp();
+        // Android may close the app while its camera is open: save the form first
+        onBeforeNativeCamera?.();
         const photo = await Camera.getPhoto({
-          quality: 85,
+          quality: 80,
+          // A 1200 px photo is plenty for a product card and uses far less memory than the
+          // full camera resolution (which makes Android more likely to close the app)
+          width: 1200,
+          height: 1200,
+          correctOrientation: true,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
           source: CameraSource.Camera,
         });
+        clearProductDraft();
 
         if (photo.dataUrl) {
           const compressed = await compressImage(
@@ -420,11 +445,15 @@ export function CameraCaptureModal({
         }
       } catch (err: any) {
         console.warn("[CameraCaptureModal] Camera.getPhoto falló o cancelado, usando selector de cámara:", err);
+      } finally {
+        leftAppDone();
+        clearProductDraft();
       }
     }
 
     // 2. En Navegador Móvil o fallback Web: Disparar input con capture="environment"
     // Esto abre de inmediato la cámara nativa del teléfono en Android e iOS
+    allowLeavingApp();
     if (mobileCameraInputRef.current) {
       mobileCameraInputRef.current.click();
     } else if (fileInputRef.current) {
@@ -485,6 +514,7 @@ export function CameraCaptureModal({
 
   // Subida desde archivo local o selector de foto
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    leftAppDone();
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -528,7 +558,7 @@ export function CameraCaptureModal({
       onClick={handleClose}
     >
       <div
-        className="bg-slate-950 text-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]"
+        className="bg-slate-950 text-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[calc(92vh/var(--app-scale,1))]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
@@ -677,7 +707,7 @@ export function CameraCaptureModal({
                 {/* 3. Subir archivo desde dispositivo */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                   className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <IconImage size={16} /> Seleccionar Imagen / Galería
@@ -741,7 +771,7 @@ export function CameraCaptureModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                       className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <IconImage size={15} />
@@ -833,7 +863,7 @@ export function CameraCaptureModal({
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => { allowLeavingApp(); fileInputRef.current?.click(); }}
                 className="py-2.5 px-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer"
                 title="Seleccionar archivo de imagen"
               >

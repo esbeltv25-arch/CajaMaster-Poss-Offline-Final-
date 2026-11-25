@@ -49,6 +49,7 @@ interface CajaNativePluginInterface {
     dialogTitle?: string;
   }): Promise<{ success: boolean; methodUsed: string }>;
   openExternalUrl(options: { url: string }): Promise<{ success: boolean }>;
+  shareTextToApp(options: { text: string; packages: string[] }): Promise<{ success: boolean; packageName?: string }>;
   clearAppCache(): Promise<{ success: boolean }>;
 }
 
@@ -343,6 +344,51 @@ export async function openExternalUrl(urlString: string): Promise<boolean> {
     window.location.href = urlString;
     return true;
   }
+}
+
+/** Telegram and its common variants (official, web/APK build, Telegram X, Plus, Nekogram, exteraGram...). */
+export const TELEGRAM_PACKAGES = [
+  "org.telegram.messenger",
+  "org.telegram.messenger.web",
+  "org.telegram.messenger.beta",
+  "org.thunderdog.challegram",
+  "org.telegram.plus",
+  "tw.nekomimi.nekogram",
+  "com.exteragram.messenger",
+  "nekox.messenger",
+];
+
+/**
+ * Opens Telegram's own chat picker with the text ready to send.
+ *
+ * `https://t.me/share/url` links are not reliable on Android: when the system has not
+ * verified Telegram's link ownership (common on Android 12+, or when t.me is unreachable),
+ * they open in the browser instead of the app and nothing gets sent. So on the APK:
+ *   1. send the text directly to the installed Telegram app (Android share intent);
+ *   2. older APKs without that function: Telegram's own `tg://` link;
+ *   3. no Telegram installed: the system share sheet (any app);
+ * and on the web, the t.me share page.
+ */
+export async function openTelegramWithText(text: string): Promise<boolean> {
+  if (isNativePlatform()) {
+    try {
+      const res = await CajaNative.shareTextToApp({ text, packages: TELEGRAM_PACKAGES });
+      if (res.success) return true;
+    } catch {
+      // APK without shareTextToApp (installed before this version): use the tg:// link
+      try {
+        const res = await CajaNative.openExternalUrl({
+          url: `tg://msg_url?url=&text=${encodeURIComponent(text)}`,
+        });
+        if (res.success) return true;
+      } catch {
+        // Telegram not installed
+      }
+    }
+    const shared = await nativeShare({ title: "CajaMaster POS", text, dialogTitle: "Telegram no está instalado: elige otra app" });
+    return shared.success;
+  }
+  return openExternalUrl(`https://t.me/share/url?text=${encodeURIComponent(text)}`);
 }
 
 /**

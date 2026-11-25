@@ -10,6 +10,18 @@ export interface ScreenCalibration {
   paddingBottom: number; // 0 to 80 (px)
   paddingHorizontal: number; // 0 to 40 (px)
   displayMode: "phone-frame" | "tablet-frame" | "fit-screen";
+  /** Size of text and buttons (%) for each screen format (phone / tablet / desktop). 100 = normal. */
+  uiScaleByMode?: Partial<Record<LayoutMode, number>>;
+}
+
+export const UI_SCALE_MIN = 90;
+export const UI_SCALE_MAX = 140;
+
+/** Text & button size (%) in effect for a screen format. */
+export function uiScaleFor(calibration: ScreenCalibration, mode: LayoutMode): number {
+  const v = Number(calibration.uiScaleByMode?.[mode]);
+  if (!Number.isFinite(v) || v <= 0) return 100;
+  return Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, Math.round(v)));
 }
 
 export const DEFAULT_SCREEN_CALIBRATION: ScreenCalibration = {
@@ -316,7 +328,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--color-gold", effectiveTheme.accentColor);
     root.style.setProperty("--color-gold-deep", effectiveTheme.accentDeepColor);
 
-    // Apply safe area and scaling CSS custom properties
+    // Size of text and buttons: the whole interface is zoomed. Every viewport-height
+    // measure in the app is divided by --app-scale so screens still fit exactly.
+    const scale = uiScaleFor(calibration, layoutMode) / 100;
+    root.style.setProperty("--app-scale", String(scale));
+    const appRoot = document.getElementById("root");
+    if (appRoot) appRoot.style.zoom = scale === 1 ? "" : String(scale);
+
+    // Apply safe area CSS custom properties
     root.style.setProperty("--app-zoom", `${calibration.zoom}%`);
     root.style.setProperty("--app-safe-top", `${calibration.paddingTop}px`);
     root.style.setProperty("--app-safe-bottom", `${calibration.paddingBottom}px`);
@@ -331,7 +350,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add("light");
       body.classList.remove("dark-mode");
     }
-  }, [effectiveTheme, calibration, isEffectiveDark]);
+  }, [effectiveTheme, calibration, isEffectiveDark, layoutMode]);
 
   return (
     <ThemeContext.Provider

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { NumericInput } from "../NumericInput";
 import { motion } from "motion/react";
 import { IconX, IconBuilding } from "../Icons";
 import { actions } from "../../store";
@@ -70,7 +71,7 @@ export function NewAgencyModal({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100"
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[calc(90vh/var(--app-scale,1))] overflow-hidden border border-slate-100"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
@@ -132,11 +133,11 @@ export function NewAgencyModal({
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 Tarifa Base Promedio (CUP)
               </label>
-              <input
-                type="number"
+              <NumericInput
+                
                 min={0}
                 value={baseFee}
-                onChange={(e) => setBaseFee(parseFloat(e.target.value) || 0)}
+                onValueChange={(n) => setBaseFee(n)}
                 placeholder="300"
                 className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
               />

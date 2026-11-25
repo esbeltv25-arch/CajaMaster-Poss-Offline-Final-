@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { NumericInput } from "../components/NumericInput";
 import { useStore, actions } from "../store";
 import { useTheme } from "../themeContext";
 import { TopBar } from "../components/Layout";
@@ -24,6 +25,7 @@ import {
   IconScale,
 } from "../components/Icons";
 import { formatCurrency, roundCurrency, cashByCurrencyLines } from "../utils/currency";
+import { useUserSession, getSession, endShift } from "../services/userSession";
 
 /** Cash portion of a sale. Same rule as the IPVE report (Reportes.tsx). */
 function mixedCashPart(s: { paymentMethod: string; total: number; cashPaid?: number }): number {
@@ -80,7 +82,7 @@ export function generateZReportShareText(
   const lines = [
     `📊 *INFORME Z - CIERRE DIARIO*`,
     `🏢 *${bizName.toUpperCase()}*`,
-    biz.owner ? `👤 Responsable: ${biz.owner}` : "",
+    closing.cashier || biz.owner ? `👤 Responsable: ${closing.cashier || biz.owner}` : "",
     biz.phone ? `📞 Tel: ${biz.phone}` : "",
     biz.address ? `📍 Dirección: ${biz.address}` : "",
     `📅 Fecha: ${dateStr} • ⏰ Hora: ${timeStr}`,
@@ -168,6 +170,7 @@ export function CierreCajaScreen() {
   });
   const [notes, setNotes] = useState("");
   const [lastClosing, setLastClosing] = useState<DailyClosing | null>(null);
+  const { session } = useUserSession();
   const [selectedHistoricalClosing, setSelectedHistoricalClosing] = useState<DailyClosing | null>(null);
   const [copyToast, setCopyToast] = useState<string | null>(null);
   const [auditModalReport, setAuditModalReport] = useState<AuditReport | null>(null);
@@ -181,14 +184,34 @@ export function CierreCajaScreen() {
     return now.getTime();
   })();
 
+  // Shift period: a second closing on the same day only covers the sales made after the previous one
+  const lastClosingToday = state.closings
+    .filter((c) => c.closedAt >= startOfDay)
+    .reduce<DailyClosing | null>((acc, c) => (!acc || c.closedAt > acc.closedAt ? c : acc), null);
+  const periodStart = lastClosingToday ? lastClosingToday.closedAt : startOfDay;
+
   const todaySales = useMemo(() => {
     return state.sales.filter(
       (s) =>
         s.ts >= startOfDay &&
+        s.ts > (lastClosingToday ? lastClosingToday.closedAt : 0) &&
         s.paymentStatus !== "CANCELADO" &&
         s.paymentStatus !== "FALLIDO"
     );
-  }, [state.sales, startOfDay]);
+  }, [state.sales, startOfDay, lastClosingToday]);
+
+  // Sales per seller in this period (only when users are configured)
+  const salesBySeller = useMemo(() => {
+    const map = new Map<string, { tickets: number; total: number }>();
+    todaySales.forEach((s) => {
+      if (!s.sellerName) return;
+      const cur = map.get(s.sellerName) || { tickets: 0, total: 0 };
+      cur.tickets++;
+      cur.total += s.total || 0;
+      map.set(s.sellerName, cur);
+    });
+    return [...map.entries()];
+  }, [todaySales]);
 
   const cashSalesTotal = useMemo(() => {
     return roundCurrency(
@@ -382,6 +405,7 @@ export function CierreCajaScreen() {
       counts: countItems,
       billCounts: Object.keys(billCounts).length > 0 ? billCounts : undefined,
       cashByCurrency,
+      cashier: session?.userName,
       notes: notes.trim() || undefined,
     });
 
@@ -511,13 +535,29 @@ export function CierreCajaScreen() {
             <div className="flex items-center gap-2">
               <IconCoins size={20} className="text-amber-400" />
               <h2 className="font-extrabold text-sm uppercase tracking-wider">
-                Ventas de la Jornada (Hoy)
+                {lastClosingToday
+                  ? `Ventas del turno (desde las ${new Date(periodStart).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })})`
+                  : "Ventas de la Jornada (Hoy)"}
               </h2>
             </div>
             <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full font-bold">
               {todaySales.length} Tickets Emitidos
             </span>
           </div>
+          {(session || salesBySeller.length > 0) && (
+            <div className="text-[11px] text-white/70 space-y-0.5" id="cierre-sellers">
+              {session && (
+                <div>
+                  Responsable del turno: <b className="text-white">{session.userName}</b>
+                </div>
+              )}
+              {salesBySeller.map(([name, v]) => (
+                <div key={name}>
+                  {name}: {v.tickets} ticket{v.tickets === 1 ? "" : "s"} · {formatCurrency(v.total, "CUP", state.rates)}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
             <div className="bg-white/5 p-3 rounded-2xl border border-white/10">
@@ -535,7 +575,7 @@ export function CierreCajaScreen() {
             </div>
 
             <div className="bg-amber-400/10 p-3 rounded-2xl border border-amber-400/30 col-span-2 sm:col-span-1">
-              <div className="text-[10px] text-amber-300 font-bold uppercase">TOTAL GENERAL DÍA</div>
+              <div className="text-[10px] text-amber-300 font-bold uppercase">{lastClosingToday ? "TOTAL DEL TURNO" : "TOTAL GENERAL DÍA"}</div>
               <div className="text-base font-extrabold text-amber-400 mt-0.5">
                 {formatCurrency(totalSalesAmount, "CUP", state.rates)}
               </div>
@@ -559,10 +599,10 @@ export function CierreCajaScreen() {
               </label>
               <div className="neu-inset rounded-2xl px-3.5 h-12 flex items-center gap-1.5">
                 <span className="text-slate-400 font-bold text-xs">CUP</span>
-                <input
-                  type="number"
+                <NumericInput
+                  
                   value={openingCash}
-                  onChange={(e) => setOpeningCash(parseFloat(e.target.value || "0"))}
+                  onValueChange={(n) => setOpeningCash(n)}
                   className="flex-1 min-w-0 bg-transparent outline-none font-extrabold text-base text-[var(--color-ink)]"
                 />
               </div>
@@ -871,15 +911,10 @@ export function CierreCajaScreen() {
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-1">
                     <span className="text-[11px] text-slate-500 font-bold">Conteo:</span>
-                    <input
-                      type="number"
+                    <NumericInput
+                      
                       value={it.physicalStock}
-                      onChange={(e) =>
-                        handleUpdateCount(
-                          it.productId,
-                          parseInt(e.target.value || "0", 10)
-                        )
-                      }
+                      onValueChange={(n) => handleUpdateCount(it.productId, n)} integer
                       className="w-16 h-9 rounded-xl border border-slate-300 dark:border-white/10 text-center font-extrabold text-sm outline-none bg-slate-50 dark:bg-slate-800 text-[var(--color-ink)]"
                     />
                     <span className="text-xs text-slate-400 font-bold">{it.unit}</span>
@@ -1099,8 +1134,11 @@ export function CierreCajaScreen() {
           closing={lastClosing || selectedHistoricalClosing!}
           onOpenAudit={(report) => setAuditModalReport(report)}
           onClose={() => {
+            const closedNow = Boolean(lastClosing);
             setLastClosing(null);
             setSelectedHistoricalClosing(null);
+            // The Z closing ends the shift: the next person must identify with their PIN
+            if (closedNow && getSession()) endShift();
           }}
         />
       )}
@@ -1280,7 +1318,7 @@ function ZReportModal({
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[94vh] print:max-w-none print:shadow-none print:border-none print:rounded-none animate-pop my-auto"
+          className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[calc(94vh/var(--app-scale,1))] print:max-w-none print:shadow-none print:border-none print:rounded-none animate-pop my-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with Title and Close Button */}
@@ -1433,9 +1471,9 @@ function ZReportModal({
             <div className="text-[10px] text-slate-500 font-sans">
               Fecha: {closing.date} • Hora: {new Date(closing.closedAt).toLocaleTimeString("es-ES")}
             </div>
-            {biz.owner && (
+            {(closing.cashier || biz.owner) && (
               <div className="text-[10px] text-slate-500 font-sans">
-                Responsable: {biz.owner}
+                Responsable: {closing.cashier || biz.owner}
               </div>
             )}
             {biz.phone && (

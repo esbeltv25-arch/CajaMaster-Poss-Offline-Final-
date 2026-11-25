@@ -174,7 +174,7 @@ export function CategorySlider({
           className={`w-full flex ${
             isWrapped
               ? "flex-wrap gap-1.5 py-0.5 px-0.5 max-h-36 overflow-y-auto"
-              : "flex-nowrap items-center gap-1.5 overflow-x-auto py-0.5 px-0.5 no-scrollbar touch-pan-x overscroll-x-contain cursor-grab active:cursor-grabbing"
+              : "flex-nowrap items-center gap-1.5 overflow-x-auto py-0.5 px-0.5 no-scrollbar overscroll-x-contain cursor-grab active:cursor-grabbing"
           } ${compact ? "text-[11px]" : "text-xs"}`}
           style={{
             WebkitOverflowScrolling: "touch",

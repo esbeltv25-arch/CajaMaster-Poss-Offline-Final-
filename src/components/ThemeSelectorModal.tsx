@@ -23,7 +23,7 @@ export function ThemeSelectorModal() {
       onClick={() => setIsThemePickerOpen(false)}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-black/10"
+        className="bg-white rounded-3xl w-full max-w-xl max-h-[calc(90vh/var(--app-scale,1))] flex flex-col overflow-hidden shadow-2xl border border-black/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

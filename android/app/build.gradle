@@ -12,8 +12,9 @@ android {
         applicationId "com.cajamaster.pos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1100
-        versionName "1.4.0"
+        // CI passes the version of version.json (APP_VERSION_CODE / APP_VERSION_NAME)
+        versionCode((System.getenv("APP_VERSION_CODE") ?: "1100").toInteger())
+        versionName(System.getenv("APP_VERSION_NAME") ?: "1.4.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -24,6 +25,21 @@ android {
     signingConfigs {
         debug {
             // Clave estándar de depuración
+        }
+        // Fixed key chosen by CI (GitHub Actions): the test key of the repository or the
+        // production key protected by the ANDROID_KEYSTORE_PASSWORD secret. A fixed key lets
+        // each new APK install over the previous one without uninstalling.
+        ci {
+            def ksPath = System.getenv("CM_KEYSTORE_FILE")
+            if (ksPath && new File(ksPath).exists()) {
+                storeFile new File(ksPath)
+                storeType "pkcs12"
+                storePassword System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("CM_KEY_ALIAS")
+                keyPassword System.getenv("CM_KEYSTORE_PASSWORD")
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
         }
         release {
             def keystoreFile = file('release.keystore')
@@ -44,7 +60,10 @@ android {
         }
         release {
             def keystoreFile = file('release.keystore')
-            if (keystoreFile.exists()) {
+            def ciKeystore = System.getenv("CM_KEYSTORE_FILE")
+            if (ciKeystore && new File(ciKeystore).exists()) {
+                signingConfig signingConfigs.ci
+            } else if (keystoreFile.exists()) {
                 signingConfig signingConfigs.release
             } else {
                 signingConfig signingConfigs.debug

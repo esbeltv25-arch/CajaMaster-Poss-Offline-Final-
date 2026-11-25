@@ -1,6 +1,7 @@
 package com.cajamaster.pos;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
@@ -14,6 +15,7 @@ import android.util.Log;
 import android.webkit.MimeTypeMap;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -289,6 +291,43 @@ public class CajaNativePlugin extends Plugin {
         } catch (Exception e) {
             Log.e(TAG, "Error opening external URL: " + urlString, e);
             call.reject("Could not open external URL: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Sends plain text straight to the first installed app of the list (e.g. Telegram and its
+     * variants), opening its own chat picker. Does not depend on t.me links, which Android may
+     * open in the browser instead of the app.
+     */
+    @PluginMethod
+    public void shareTextToApp(PluginCall call) {
+        String text = call.getString("text", "");
+        JSArray packages = call.getArray("packages", new JSArray());
+        try {
+            List<String> list = packages.toList();
+            for (String pkg : list) {
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("text/plain");
+                intent.putExtra(Intent.EXTRA_TEXT, text);
+                intent.setPackage(pkg);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    getActivity().startActivity(intent);
+                    JSObject ret = new JSObject();
+                    ret.put("success", true);
+                    ret.put("packageName", pkg);
+                    call.resolve(ret);
+                    return;
+                } catch (ActivityNotFoundException notInstalled) {
+                    // try the next app of the list
+                }
+            }
+            JSObject ret = new JSObject();
+            ret.put("success", false);
+            call.resolve(ret);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sharing text to app", e);
+            call.reject("Could not share text: " + e.getMessage(), e);
         }
     }
 

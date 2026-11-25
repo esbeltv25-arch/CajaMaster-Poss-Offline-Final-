@@ -1,0 +1,156 @@
+# Compila el APK de Android en la nube de GitHub (sin Mac, sin Android Studio).
+#
+# - Al fusionar en main (o con el botón "Run workflow" en Actions): compila el APK y lo
+#   publica en "Releases" con un enlace para descargarlo directamente desde el teléfono.
+# - En cada pull request: lo compila como comprobación y lo deja como artefacto descargable.
+#
+# Firma (siempre la misma llave, para que cada APK se instale encima del anterior):
+# - Si existe el secreto ANDROID_KEYSTORE_PASSWORD: APK de PRODUCCIÓN firmado con
+#   android/keystore/cajamaster-release.p12. Si ese archivo aún no existe, la primera
+#   compilación (push) lo crea protegido con esa contraseña y lo guarda en el repositorio.
+#   Sin la contraseña, el archivo no sirve para nada.
+# - Si no: APK de PRUEBA firmado con android/keystore/cajamaster-test.p12 (llave fija de pruebas).
+name: Compilar APK Android
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["src/**", "public/**", "android/**", "package.json", "version.json", "capacitor.config.ts", "vite.config.ts", "index.html", ".github/workflows/build-apk.yml"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # El SDK de Android ya viene instalado en los servidores de GitHub (ANDROID_HOME);
+      # solo aceptamos las licencias para que Gradle pueda descargar la plataforma que falte.
+      - name: Preparar SDK de Android
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)
+          echo "sdkmanager: $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+
+      - name: Caché de Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Leer versión
+        id: ver
+        run: |
+          echo "version=$(node -p "require('./version.json').version")" >> "$GITHUB_OUTPUT"
+          echo "code=$(node -p "require('./version.json').versionCode")" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Compilar la app y copiarla a Android
+        env:
+          VITE_ELTOQUE_TOKEN: ${{ secrets.ELTOQUE_TOKEN }}
+        run: npm run cap:build
+
+      - name: Llave de firma
+        id: sign
+        env:
+          PROD_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          PROD=android/keystore/cajamaster-release.p12
+          if [ -n "$PROD_PASSWORD" ] && [ ! -f "$PROD" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Creando la llave de producción (una sola vez)..."
+            keytool -genkeypair -storetype PKCS12 -keystore "$PROD" -alias cajamaster \
+              -keyalg RSA -keysize 4096 -validity 36500 \
+              -dname "CN=CajaMaster POS, O=CajaMaster, C=CU" \
+              -storepass "$PROD_PASSWORD" -keypass "$PROD_PASSWORD"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$PROD"
+            git commit -m "Llave de firma de producción (protegida con el secreto ANDROID_KEYSTORE_PASSWORD)"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+          if [ -n "$PROD_PASSWORD" ] && [ -f "$PROD" ]; then
+            {
+              echo "CM_KEYSTORE_FILE=$GITHUB_WORKSPACE/$PROD"
+              echo "CM_KEYSTORE_PASSWORD=$PROD_PASSWORD"
+              echo "CM_KEY_ALIAS=cajamaster"
+            } >> "$GITHUB_ENV"
+            echo "mode=produccion" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "CM_KEYSTORE_FILE=$GITHUB_WORKSPACE/android/keystore/cajamaster-test.p12"
+              echo "CM_KEYSTORE_PASSWORD=cajamaster-test"
+              echo "CM_KEY_ALIAS=cajamaster-test"
+            } >> "$GITHUB_ENV"
+            echo "mode=prueba" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compilar APK
+        working-directory: android
+        env:
+          APP_VERSION_CODE: ${{ steps.ver.outputs.code }}
+          APP_VERSION_NAME: ${{ steps.ver.outputs.version }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Preparar archivo
+        id: out
+        run: |
+          MODE="${{ steps.sign.outputs.mode }}"
+          SRC=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          NAME="CajaMaster-${{ steps.ver.outputs.version }}-$MODE.apk"
+          mkdir -p out && cp "$SRC" "out/$NAME"
+          ls -lh out
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          FP=$(keytool -list -keystore "$CM_KEYSTORE_FILE" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep -o "SHA-256): .*" | cut -c10-)
+          echo "fingerprint=$FP" >> "$GITHUB_OUTPUT"
+
+      - name: Guardar APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.out.outputs.name }}
+          path: out/${{ steps.out.outputs.name }}
+          retention-days: 30
+
+      - name: Publicar en Releases (descarga directa desde el teléfono)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-v${{ steps.ver.outputs.version }}-${{ github.run_number }}"
+          gh release create "$TAG" "out/${{ steps.out.outputs.name }}" \
+            --title "APK CajaMaster ${{ steps.ver.outputs.version }} (compilación ${{ github.run_number }})" \
+            --notes "APK de ${{ steps.sign.outputs.mode }} generado automáticamente desde ${{ github.sha }}. Huella de la firma: ${{ steps.out.outputs.fingerprint }}. Descárgalo desde el teléfono y ábrelo para instalarlo." \
+            --prerelease \
+            --target "${{ github.sha }}"
+
+      - name: Resumen
+        run: |
+          echo "### APK listo: ${{ steps.out.outputs.name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Modo de firma: **${{ steps.sign.outputs.mode }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Huella SHA-256 de la firma: \`${{ steps.out.outputs.fingerprint }}\`" >> "$GITHUB_STEP_SUMMARY"

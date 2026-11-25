@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { NumericInput } from "./NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import {
   IconPrinter,
@@ -247,7 +248,7 @@ export function PrinterSelectionModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto"
+          className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[calc(90vh/var(--app-scale,1))] my-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -572,10 +573,10 @@ export function PrinterSelectionModal({
                         <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
                           Puerto Raw:
                         </label>
-                        <input
-                          type="number"
+                        <NumericInput
+                          
                           value={newPort}
-                          onChange={(e) => setNewPort(Number(e.target.value))}
+                          onValueChange={(n) => setNewPort(n)} integer
                           placeholder="9100"
                           className="w-full h-9 px-3 rounded-xl border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 outline-none focus:border-emerald-600"
                         />

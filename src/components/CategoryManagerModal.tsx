@@ -163,7 +163,7 @@ export function CategoryManagerModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(90vh/var(--app-scale,1))]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

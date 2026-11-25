@@ -152,7 +152,7 @@ export function HorizontalSlideBar({
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         onScroll={updateScrollState}
-        className={`flex items-center gap-1.5 overflow-x-auto scrollbar-none touch-pan-x scroll-smooth cursor-grab active:cursor-grabbing ${containerClassName}`}
+        className={`flex items-center gap-1.5 overflow-x-auto scrollbar-none scroll-smooth cursor-grab active:cursor-grabbing ${containerClassName}`}
         style={{ WebkitOverflowScrolling: "touch" }}
       >
         {children}

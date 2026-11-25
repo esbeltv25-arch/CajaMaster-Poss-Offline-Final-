@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, type SyntheticEvent } from "react";
+import { NumericInput } from "../components/NumericInput";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore, useTicket, actions } from "../store";
 import { TopBar } from "../components/Layout";
@@ -582,7 +583,7 @@ export function CajaScreen({
           </div>
 
           {/* Product Items: Horizontal Shelves, Responsive Grid or Fast List Mode */}
-          <div className="flex-1 overflow-y-auto pr-0.5 pb-2 pt-0.5 min-h-0">
+          <div className="flex-1 overflow-y-auto pr-0.5 pb-28 pt-0.5 min-h-0">
             {viewMode === "shelves" ? (
               /* HORIZONTAL SCROLLING SHELVES BY CATEGORY */
               <div className="space-y-3 pb-2">
@@ -616,7 +617,7 @@ export function CajaScreen({
                           </div>
 
                           {/* Horizontal Scrolling Container (overflow-x-auto flex-nowrap) */}
-                          <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-1 px-0.5 no-scrollbar touch-pan-x overscroll-x-contain">
+                          <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-1 px-0.5 no-scrollbar overscroll-x-contain">
                             {catProds.map((p) => {
                               const isOutOfStock = p.stock <= 0;
                               const isLow = p.stock <= p.lowStockAlert && !isOutOfStock;
@@ -736,7 +737,7 @@ export function CajaScreen({
                     </div>
 
                     {/* Horizontal scroll shelf */}
-                    <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-2 px-0.5 no-scrollbar touch-pan-x overscroll-x-contain">
+                    <div className="flex flex-nowrap items-stretch overflow-x-auto gap-2 pb-2 px-0.5 no-scrollbar overscroll-x-contain">
                       {filteredProducts.map((p) => {
                         const isOutOfStock = p.stock <= 0;
                         const isLow = p.stock <= p.lowStockAlert && !isOutOfStock;
@@ -1210,7 +1211,7 @@ export function CajaScreen({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="w-full max-w-md h-[90%] sm:h-[88%] max-h-[92dvh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-t sm:border border-slate-200"
+              className="w-full max-w-md h-[90%] sm:h-[88%] max-h-[calc(92dvh/var(--app-scale,1))] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-t sm:border border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drag Handle & Top Bar */}
@@ -1414,7 +1415,7 @@ export function CajaScreen({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 10 }}
               transition={{ type: "spring", damping: 25, stiffness: 400 }}
-              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[88vh]"
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[calc(88vh/var(--app-scale,1))]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -1886,10 +1887,10 @@ function UnifiedTicketAndCheckout({
                 <IconTag size={13} /> Descuento ({payCurrency}):
               </span>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
+                <NumericInput
+                  
                   value={ticket.discount ? roundCurrency(ticket.discount / payRate) : ""}
-                  onChange={(e) => ticket.setDiscount(roundCurrency((parseFloat(e.target.value || "0") || 0) * payRate))}
+                  onValueChange={(n) => ticket.setDiscount(roundCurrency(Math.max(0, n) * payRate))}
                   placeholder="0"
                   className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-white/20 bg-[var(--color-bg)] text-xs font-bold outline-none text-right text-[var(--color-ink)]"
                   autoFocus

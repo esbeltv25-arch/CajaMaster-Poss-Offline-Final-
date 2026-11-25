@@ -112,7 +112,7 @@ export function WhatsAppMessageModal({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100"
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[calc(90vh/var(--app-scale,1))] overflow-hidden border border-slate-100"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 via-sky-50 to-slate-50">

@@ -736,9 +736,10 @@ export function buildSaleReceiptText(
   const ticketNum = sale.ticketNumber || String(sale.id).slice(-4);
   lines.push(padLine(`${docLabel} #${ticketNum}`, new Date(sale.ts).toLocaleDateString("es-ES"), cols));
   lines.push(padLine("HORA:", new Date(sale.ts).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }), cols));
-  if (biz.owner) {
+  const attendedBy = (sale as any).sellerName || biz.owner;
+  if (attendedBy) {
     const role = (taxo.cashierRoleLabel || "Atendido por").toUpperCase();
-    lines.push(padLine(`${role}:`, biz.owner, cols));
+    lines.push(padLine(`${role}:`, attendedBy, cols));
   }
   lines.push(divider("-", cols));
 

@@ -6,7 +6,7 @@
 
 import type { Sale, DailyClosing, BusinessInfo, ExchangeRates } from "../types";
 import { formatCurrency, cashByCurrencyLines } from "./currency";
-import { openExternalUrl } from "./nativeBridge";
+import { openTelegramWithText } from "./nativeBridge";
 
 /**
  * Normalizes a Telegram username or channel identifier.
@@ -53,8 +53,7 @@ export function getTelegramDirectUrl(recipientHandle: string, text?: string): st
  * Opens Telegram share intent in browser or native client.
  */
 export function openTelegramShare(text: string, url?: string): void {
-  const shareUrl = getTelegramShareUrl(text, url);
-  openExternalUrl(shareUrl);
+  void openTelegramWithText(url ? `${text}\n${url}` : text);
 }
 
 /**

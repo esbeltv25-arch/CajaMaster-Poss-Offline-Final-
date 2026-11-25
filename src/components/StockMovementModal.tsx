@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { currentUserName } from "../services/userSession";
 import type { Product, MovementType } from "../types";
 import { actions } from "../store";
 import {
@@ -61,7 +62,7 @@ export const StockMovementModal: React.FC<StockMovementModalProps> = ({
   const [reason, setReason] = useState<string>("");
   const [customReason, setCustomReason] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-  const [user, setUser] = useState<string>("Administrador");
+  const [user, setUser] = useState<string>(() => currentUserName("Administrador"));
   const [unitCost, setUnitCost] = useState<string>("");
 
   if (!isOpen) return null;
@@ -128,7 +129,7 @@ export const StockMovementModal: React.FC<StockMovementModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-slate-100"
+        className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(92vh/var(--app-scale,1))] text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

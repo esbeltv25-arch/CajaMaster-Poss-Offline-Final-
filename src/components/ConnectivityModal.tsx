@@ -53,7 +53,7 @@ export function ConnectivityModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-md max-h-[calc(100dvh-1.25rem)] sm:max-h-[90vh] my-auto overflow-hidden shadow-2xl border border-black/10 flex flex-col"
+        className="bg-white rounded-3xl w-full max-w-md max-h-[calc(100dvh/var(--app-scale,1)-1.25rem)] sm:max-h-[calc(90vh/var(--app-scale,1))] my-auto overflow-hidden shadow-2xl border border-black/10 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

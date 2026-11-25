@@ -24,18 +24,28 @@ import {
 import type { Product } from "./types";
 import { actions, getStoreRates } from "./store";
 import { updateRatesFromElToque } from "./services/eltoqueRates";
+import { useUserSession, startLockWatcher } from "./services/userSession";
+import { ShiftLockScreen } from "./components/ShiftLockScreen";
+import { takeProductDraft, type ProductDraft } from "./services/productDraft";
 
 type View =
   | { kind: "tab"; tab: Tab }
-  | { kind: "edit"; product?: Product };
+  | { kind: "edit"; product?: Product; draft?: ProductDraft };
 
 function AppContent() {
   const [activated, setActivated] = useState(() => getLicenseStatus().isActivated);
   const [deviceId] = useState(() => getPersistentDeviceId());
-  const [view, setView] = useState<View>({ kind: "tab", tab: "caja" });
+  // If Android closed the app while the camera was open, reopen the product form that was being filled
+  const [view, setView] = useState<View>(() => {
+    const draft = takeProductDraft();
+    return draft ? { kind: "edit", draft } : { kind: "tab", tab: "caja" };
+  });
   const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [quickGuideSection, setQuickGuideSection] = useState<GuideSection>("wizard");
   const [otaAvailable, setOtaAvailable] = useState<RemoteVersionInfo | null>(null);
+  const userSession = useUserSession();
+  // Automatic lock (inactivity / reopening the app), configured in Ajustes → Usuarios y turnos
+  useEffect(() => startLockWatcher(), []);
   const [otaDismissed, setOtaDismissed] = useState(false);
   const [otaBusy, setOtaBusy] = useState(false);
   const [otaStatus, setOtaStatus] = useState<string>("");
@@ -104,6 +114,16 @@ function AppContent() {
     );
   }
 
+  // Users configured and nobody on shift: ask who is working
+  const activeShift =
+    userSession.session && userSession.users.some((u) => u.id === userSession.session!.userId);
+  if (userSession.users.length > 0 && !activeShift) {
+    return <ShiftLockScreen />;
+  }
+  // Locked screen: shown ON TOP of the app (not instead of it), so whatever was open
+  // underneath (a product form waiting for a camera photo, a payment, the ticket) is kept.
+  const screenLocked = userSession.users.length > 0 && userSession.locked;
+
   function logout() {
     revokeLicense();
     setActivated(false);
@@ -113,6 +133,12 @@ function AppContent() {
 
   return (
     <>
+      {screenLocked && (
+        <div className="fixed inset-0 z-[1000] overflow-y-auto" id="shift-lock-overlay">
+          <ShiftLockScreen locked />
+        </div>
+      )}
+      <div inert={screenLocked} aria-hidden={screenLocked || undefined} className="contents">
       <PhoneFrame>
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <AnimatePresence mode="wait" initial={false}>
@@ -127,6 +153,7 @@ function AppContent() {
               >
                 <EditProductScreen
                   initial={view.product}
+                  draft={view.draft}
                   onClose={() => setView({ kind: "tab", tab: "inventario" })}
                 />
               </motion.div>
@@ -264,6 +291,7 @@ function AppContent() {
         onGoToCaja={() => setView({ kind: "tab", tab: "caja" })}
         onGoToNewProduct={() => setView({ kind: "edit" })}
       />
+      </div>
     </>
   );
 }

@@ -86,6 +86,7 @@ import type { BusinessInfo } from "../types";
 import { clearNativeAppCache } from "../utils/nativeBridge";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { ExchangeRatesCard } from "../components/ExchangeRatesCard";
+import { UsersCard } from "../components/UsersCard";
 
 export function AjustesScreen({
   deviceId,
@@ -914,6 +915,9 @@ export function AjustesScreen({
           </div>
         </div>
 
+        {/* Users & shifts (who is selling) */}
+        <UsersCard />
+
         {/* Currency & Exchange Rates Section (manual or elTOQUE) */}
         <ExchangeRatesCard />
 
@@ -1150,7 +1154,7 @@ export function AjustesScreen({
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-600 truncate">
-                    Caja, Stock, Billetes Nuevos 10k/20k, Arqueo Z, IPVE y Respaldos
+                    Guía rápida y manual completo paso a paso: caja, monedas, usuarios, cierre Z, envíos y más
                   </p>
                 </div>
               </div>
@@ -1160,10 +1164,19 @@ export function AjustesScreen({
                   onClick={() => handleGenerateManualPdf(false)}
                   disabled={isGeneratingManualPdf}
                   className="px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
-                  title="Descargar Manual en PDF"
+                  title="Descargar la guía rápida en PDF"
                 >
                   <IconDownload size={14} />
-                  <span>{isGeneratingManualPdf ? "Generando..." : "Descargar PDF"}</span>
+                  <span>{isGeneratingManualPdf ? "Generando..." : "Guía rápida PDF"}</span>
+                </button>
+
+                <button
+                  id="btn-open-full-manual"
+                  onClick={() => onOpenQuickGuide("manual")}
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+                  title="Manual completo paso a paso (con buscador y descarga en PDF)"
+                >
+                  <span>📘 Manual completo</span>
                 </button>
 
                 <button
@@ -1337,18 +1350,19 @@ export function AjustesScreen({
           <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-slate-800 block">
-                Márgenes y Reescalado de Pantalla:
+                Márgenes y Tamaño de Pantalla:
               </span>
               <span className="text-[10.5px] text-slate-500">
-                Evita que la cámara tape títulos o que los botones del teléfono tapen el cobro
+                Agranda letras y botones, o evita que la cámara tape títulos y que los botones del teléfono tapen el cobro
               </span>
             </div>
             <button
               type="button"
+              id="btn-open-calibration"
               onClick={() => setIsCalibrationModalOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95 shrink-0"
             >
-              <span>📱 Calibrar Márgenes Móvil</span>
+              <span>🔠 Tamaño y márgenes</span>
             </button>
           </div>
         </div>
