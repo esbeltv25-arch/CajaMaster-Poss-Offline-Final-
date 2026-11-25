@@ -1,9 +1,9 @@
 {
-  "version": "1.4.2",
-  "versionCode": 1120,
-  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.2.zip",
+  "version": "1.4.3",
+  "versionCode": 1130,
+  "updateUrl": "https://raw.githubusercontent.com/esbeltv25-arch/CajaMaster-Updates/main/updates/bundle-v1.4.3.zip",
   "mandatory": false,
-  "changelog": "Seguridad de la pantalla: candado para bloquear al instante, opción de pedir PIN al abrir la app y bloqueo automático tras X minutos sin uso (el turno sigue abierto). Incluye usuarios y turnos con PIN, scroll de Caja y borrado de pedidos de envío.",
+  "changelog": "Telegram: los botones de enviar por Telegram (ID de activación, tickets, cierre Z, envíos y repartidores) abren directamente la app de Telegram en lugar del navegador. Incluye bloqueo de pantalla con PIN y bloqueo automático.",
   "releaseDate": "2026-11-25",
   "minNativeVersionCode": 1000
 }

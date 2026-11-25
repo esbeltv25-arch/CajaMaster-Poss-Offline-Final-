@@ -4,7 +4,7 @@
  * across Android APK (via CajaNativePlugin / nativeBridge), PWA, and desktop browsers.
  */
 
-import { nativeShare, openExternalUrl as bridgeOpenExternalUrl, isNativePlatform } from "./nativeBridge";
+import { nativeShare, openExternalUrl as bridgeOpenExternalUrl, isNativePlatform, openTelegramWithText } from "./nativeBridge";
 
 export interface UniversalShareOptions {
   title?: string;
@@ -67,8 +67,5 @@ export function openWhatsAppUniversal(text: string, phone = ""): void {
  * Universal Telegram opener that works reliably in WebView, APK, and Desktop.
  */
 export function openTelegramUniversal(text: string): void {
-  const encodedText = encodeURIComponent(text);
-  const targetUrl = `https://t.me/share/url?text=${encodedText}`;
-
-  bridgeOpenExternalUrl(targetUrl);
+  void openTelegramWithText(text);
 }
