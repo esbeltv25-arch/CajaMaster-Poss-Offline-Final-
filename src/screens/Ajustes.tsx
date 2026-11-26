@@ -72,7 +72,7 @@ import {
 import { QuickStartGuideModal, type GuideSection } from "../components/QuickStartGuideModal";
 import { OtaUpdateModal, type OtaModalTab } from "../components/OtaUpdateModal";
 import { ScreenCalibrationModal } from "../components/ScreenCalibrationModal";
-import { getOtaConfig, downloadLatestZipDirectly } from "../services/otaUpdateService";
+import { getOtaConfig, downloadLatestZipDirectly, getRunningVersion } from "../services/otaUpdateService";
 import { getLicenseStatus, revokeLicense, validateLicenseKey, formatLicenseExpiry } from "../utils/licenseSecurity";
 import { generateUserManualPdf } from "../utils/userManualPdf";
 import { PrinterSelectionModal } from "../components/PrinterSelectionModal";
@@ -98,6 +98,17 @@ export function AjustesScreen({
   onOpenQuickGuide?: (section?: GuideSection) => void;
 }) {
   const state = useStore();
+  // Version actually running (the bundle's own version.json), shown in «Actualizaciones de la App»
+  const [runningVersion, setRunningVersion] = useState(() => getOtaConfig().installedVersion);
+  useEffect(() => {
+    let alive = true;
+    getRunningVersion().then((r) => {
+      if (alive && r?.version) setRunningVersion(r.version);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const {
     themeId,
     setThemeId,
@@ -1380,7 +1391,7 @@ export function AjustesScreen({
                     Actualizaciones de la App (OTA & ZIP)
                   </h3>
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    v{getOtaConfig().installedVersion}
+                    v{runningVersion}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-snug break-words">
