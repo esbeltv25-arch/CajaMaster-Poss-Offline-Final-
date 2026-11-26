@@ -14,6 +14,7 @@ import type {
   AppState,
 } from "../types";
 import { getPersistentDeviceId } from "../utils/licenseSecurity";
+import { getRoomCrypto, sealMessage, openMessage, generateRoomKey, type RoomCrypto } from "./syncCrypto";
 import { isNativePlatform, getLocalIp, startSyncServer, stopSyncServer } from "../utils/nativeBridge";
 
 const getDeviceId = () => getPersistentDeviceId();
@@ -88,6 +89,9 @@ class MultiDeviceSyncService {
   
   // Message deduplication
   private processedMsgIds = new Set<string>();
+  /** Message key + public room tag derived from the room key (see syncCrypto). */
+  private rc: RoomCrypto | null = null;
+  private warnedUnreadable = false;
   
   private stats: SyncStats = {
     packetsSent: 0,
@@ -143,7 +147,7 @@ class MultiDeviceSyncService {
           role: parsed.role || "primary",
           // Default to cloud if not explicitly set to something else
           connectionMode: parsed.connectionMode || "cloud",
-          roomKey: parsed.roomKey || ("CM-" + Math.floor(1000 + Math.random() * 9000)),
+          roomKey: parsed.roomKey || generateRoomKey(),
           deviceName: parsed.deviceName || (parsed.role === "secondary" ? "Terminal Móvil" : "Caja Central"),
           serverHost: parsed.serverHost,
           autoSyncOnChanges: parsed.autoSyncOnChanges ?? true,
@@ -154,7 +158,7 @@ class MultiDeviceSyncService {
     }
 
     // Default configuration (Cloud mode by default for zero-config Internet & P2P pairing)
-    const randomRoom = "CM-" + Math.floor(1000 + Math.random() * 9000);
+    const randomRoom = generateRoomKey();
     return {
       enabled: true,
       role: "primary",
@@ -264,7 +268,7 @@ class MultiDeviceSyncService {
       this.broadcastChannel = new BroadcastChannel("cajamaster_local_multidevice_bus");
       this.broadcastChannel.onmessage = (event) => {
         const msg = event.data;
-        if (msg && msg.roomKey === this.config.roomKey && msg.senderId !== getDeviceId()) {
+        if (msg && msg.senderId !== getDeviceId()) {
           this.stats.packetsReceived++;
           this.stats.lastSyncTimestamp = Date.now();
           this.handleInboundSyncMessage(msg);
@@ -351,7 +355,27 @@ class MultiDeviceSyncService {
     if (!this.config.enabled) return;
 
     this.setStatus("connecting");
+    const gen = this.sessionGen;
+    // Derive the message key and the public room tag (a fraction of a second, cached per key)
+    getRoomCrypto(this.config.roomKey).then(
+      (rc) => {
+        if (gen !== this.sessionGen || !this.config.enabled) return;
+        this.rc = rc;
+        this.connectTransports();
+      },
+      (err) => {
+        console.error("[SYNC] No se pudo preparar el cifrado de la sala:", err);
+        this.setStatus("error");
+      }
+    );
+  }
 
+  /** Name of the room on the servers: derived from the room key, does not reveal it. */
+  private get roomTag(): string {
+    return this.rc?.tag || "";
+  }
+
+  private connectTransports() {
     // Start heartbeat
     this.startHeartbeat();
 
@@ -390,9 +414,8 @@ class MultiDeviceSyncService {
     if (typeof window === "undefined") return;
     const gen = this.sessionGen;
     try {
-      const sanitizedRoom = this.config.roomKey.toLowerCase().replace(/[^a-z0-9]/g, "");
       const isPrimary = this.config.role === "primary";
-      const hostPeerId = `cajamaster-room-${sanitizedRoom}`;
+      const hostPeerId = `cajamaster-room-${this.roomTag}`;
 
       // STUN configuration for NAT traversal
       const peerOptions = {
@@ -492,7 +515,7 @@ class MultiDeviceSyncService {
       // Send JOIN packet immediately
       const joinPayload = {
         type: "join",
-        roomKey: this.config.roomKey,
+        roomKey: this.roomTag,
         deviceId: getDeviceId(),
         deviceName: this.config.deviceName,
         role: this.config.role,
@@ -550,8 +573,7 @@ class MultiDeviceSyncService {
   private connectCloudMqtt() {
     if (typeof window === "undefined") return;
     try {
-      const sanitizedRoom = this.config.roomKey.toUpperCase().trim();
-      const topic = `cajamaster/sync/${sanitizedRoom}`;
+      const topic = `cajamaster/sync/${this.roomTag}`;
       
       // Public, rock-solid broker with secure WebSockets
       const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
@@ -575,7 +597,7 @@ class MultiDeviceSyncService {
             // Send JOIN message
             this.sendMqttRaw({
               type: "join",
-              roomKey: this.config.roomKey,
+              roomKey: this.roomTag,
               deviceId: getDeviceId(),
               deviceName: this.config.deviceName,
               role: this.config.role,
@@ -619,8 +641,7 @@ class MultiDeviceSyncService {
   private sendMqttRaw(payload: any) {
     if (this.mqttClient && this.mqttClient.connected) {
       try {
-        const sanitizedRoom = this.config.roomKey.toUpperCase().trim();
-        const topic = `cajamaster/sync/${sanitizedRoom}`;
+        const topic = `cajamaster/sync/${this.roomTag}`;
         this.mqttClient.publish(topic, JSON.stringify(payload), { qos: 0 });
         this.stats.packetsSent++;
       } catch (e) {
@@ -691,7 +712,7 @@ class MultiDeviceSyncService {
         // Send JOIN packet
         const joinPayload = {
           type: "join",
-          roomKey: this.config.roomKey,
+          roomKey: this.roomTag,
           deviceId: getDeviceId(),
           deviceName: this.config.deviceName,
           role: this.config.role,
@@ -779,7 +800,7 @@ class MultiDeviceSyncService {
 
       const pingPayload = {
         type: "ping",
-        roomKey: this.config.roomKey,
+        roomKey: this.roomTag,
         deviceId: getDeviceId(),
         deviceName: this.config.deviceName,
         role: this.config.role,
@@ -822,7 +843,7 @@ class MultiDeviceSyncService {
     const fullMessage = {
       ...message,
       msgId,
-      roomKey: this.config.roomKey,
+      roomKey: this.roomTag,
       senderId: getDeviceId(),
       senderName: this.config.deviceName,
       senderRole: this.config.role,
@@ -830,24 +851,28 @@ class MultiDeviceSyncService {
       timestamp: Date.now(),
     };
 
+    // Encrypt: only devices with the room key can read it
+    const wire = this.toWire(fullMessage);
+    if (!wire) return;
+
     // 1. Send via WebRTC P2P DataChannels
     if (this.hostConnection && this.hostConnection.open) {
-      this.sendPeerSingle(this.hostConnection, fullMessage);
+      this.sendPeerSingle(this.hostConnection, wire);
     }
     for (const peerConn of this.peerConnections.values()) {
-      this.sendPeerSingle(peerConn, fullMessage);
+      this.sendPeerSingle(peerConn, wire);
     }
 
     // 2. Send via Cloud MQTT Relay
-    this.sendMqttRaw(fullMessage);
+    this.sendMqttRaw(wire);
 
     // 3. Send via local WebSocket
-    this.sendWsRaw(fullMessage);
+    this.sendWsRaw(wire);
 
     // 4. Send via BroadcastChannel to local tabs
     if (this.broadcastChannel) {
       try {
-        this.broadcastChannel.postMessage(fullMessage);
+        this.broadcastChannel.postMessage(wire);
         this.stats.packetsSent++;
       } catch (e) {
         console.warn("[SYNC] BroadcastChannel send error:", e);
@@ -857,17 +882,62 @@ class MultiDeviceSyncService {
     this.stats.lastSyncTimestamp = Date.now();
   }
 
-  private handleInboundSyncMessage(msg: any) {
-    if (!msg || typeof msg !== "object") return;
-    const { type, senderId, senderName, senderRole, senderMode, msgId, roomKey } = msg;
+  /**
+   * Wire format. Only what the relays need to route a message stays in clear (type, room tag,
+   * message id); the content travels sealed with the room key. The full-state snapshot keeps
+   * its sealed content under "state", the only field the local relay server stores and forwards
+   * (so APKs whose relay predates encryption keep working).
+   */
+  private toWire(inner: any): any | null {
+    if (!this.rc) return null;
+    const box = sealMessage(this.rc, inner);
+    const base = {
+      type: inner.type,
+      roomKey: this.rc.tag,
+      msgId: inner.msgId,
+      senderId: inner.senderId,
+      senderRole: inner.senderRole,
+      timestamp: inner.timestamp,
+    };
+    return inner.type === "state:snapshot" ? { ...base, state: { enc: box } } : { ...base, enc: box };
+  }
+
+  /** Control messages that carry no business data and may arrive in clear. */
+  private static readonly CLEAR_TYPES = new Set(["join", "joined", "ping", "pong", "presence", "state:request"]);
+
+  private handleInboundSyncMessage(wire: any) {
+    if (!wire || typeof wire !== "object" || !this.rc) return;
+
+    // Another room (or a device still using the room key in clear)
+    if (wire.roomKey && wire.roomKey !== this.rc.tag) return;
+
+    let msg = wire;
+    const box = wire.enc || (wire.state && wire.state.enc);
+    if (box) {
+      const inner = openMessage(this.rc, box);
+      if (!inner) {
+        if (!this.warnedUnreadable) {
+          this.warnedUnreadable = true;
+          console.warn("[SYNC] Mensaje que no se puede descifrar con la clave de esta sala: ignorado.");
+        }
+        return;
+      }
+      // A relay may re-label the full state as "state:init"
+      msg = { ...inner, type: wire.type === "state:init" ? "state:init" : inner.type };
+      if (!msg.senderId && wire.senderId) msg.senderId = wire.senderId;
+    } else if (!MultiDeviceSyncService.CLEAR_TYPES.has(wire.type)) {
+      // Business data in clear (old app version or someone outside the room): never applied
+      if (!this.warnedUnreadable) {
+        this.warnedUnreadable = true;
+        console.warn("[SYNC] Mensaje sin cifrar ignorado (¿dispositivo con una versión antigua?).");
+      }
+      return;
+    }
+
+    const { type, senderId, senderName, senderRole, senderMode, msgId } = msg;
 
     // Ignore self messages
     if (senderId === getDeviceId()) return;
-
-    // Verify roomKey if specified
-    if (roomKey && roomKey.toUpperCase() !== this.config.roomKey.toUpperCase()) {
-      return;
-    }
 
     // Deduplication check
     if (msgId) {
@@ -893,7 +963,7 @@ class MultiDeviceSyncService {
     if (this.config.role === "primary" && type !== "ping" && type !== "pong" && type !== "presence") {
       for (const peerConn of this.peerConnections.values()) {
         if (peerConn.peer !== senderId) {
-          this.sendPeerSingle(peerConn, msg);
+          this.sendPeerSingle(peerConn, wire);
         }
       }
     }
