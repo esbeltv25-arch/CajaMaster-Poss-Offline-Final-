@@ -16,6 +16,7 @@ import {
   IconCamera,
 } from "./Icons";
 import { syncService } from "../services/multiDeviceSync";
+import { generateRoomKey, isWeakRoomKey } from "../services/syncCrypto";
 import type { SyncConfig, ConnectedDevice, DeviceRole, SyncConnectionMode } from "../types";
 import { useStore } from "../store";
 import { QrScannerModal } from "./QrScannerModal";
@@ -141,7 +142,7 @@ export function SyncSettingsModal({
   };
 
   const handleGenerateNewRoomKey = () => {
-    const newKey = "CM-" + Math.floor(1000 + Math.random() * 9000);
+    const newKey = generateRoomKey();
     handleUpdateConfig({ roomKey: newKey });
     showToast(`Nueva sala generada: ${newKey}`);
   };
@@ -546,14 +547,32 @@ export function SyncSettingsModal({
                 </button>
               </div>
 
+              {isWeakRoomKey(config.roomKey) && (
+                <div className="max-w-sm mx-auto p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2" id="weak-room-key-warning">
+                  <p className="leading-snug">
+                    <b>⚠️ Clave de sala corta.</b> Es fácil de adivinar. Genera una clave segura (CM-XXXX-XXXX) y vuelve a vincular los
+                    teléfonos de los camareros con el nuevo QR.
+                  </p>
+                  <button
+                    type="button"
+                    id="btn-generate-strong-room-key"
+                    onClick={handleGenerateNewRoomKey}
+                    className="w-full py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs cursor-pointer"
+                  >
+                    Generar clave segura
+                  </button>
+                </div>
+              )}
+
               {/* Prominent PIN Display Box */}
               <div className="p-4 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl border border-slate-700 max-w-sm mx-auto text-center space-y-1">
                 <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400">
                   CLAVE DE SALA / PIN DE VINCULACIÓN
                 </span>
-                <div className="text-3xl font-mono font-black tracking-widest text-white py-1">
+                <div className="text-2xl sm:text-3xl font-mono font-black tracking-wider text-white py-1 break-all" id="sync-room-key">
                   {config.roomKey}
                 </div>
+                <p className="text-[10.5px] text-emerald-300 font-semibold">🔒 Los mensajes entre dispositivos viajan cifrados con esta clave</p>
                 {isLocalMode && isServer && (() => {
                   const hostForPin = (customHost || config.serverHost || "").split(":")[0];
                   const validIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostForPin) && hostForPin !== "127.0.0.1";
